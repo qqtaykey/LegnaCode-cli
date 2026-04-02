@@ -49,11 +49,12 @@ export async function call(
   if (arg === 'hatch') {
     const existing = getCompanion()
     if (existing) {
-      onDone(`${existing.name} is already here!`)
+      onDone(`${existing.name} 已经在这里啦！`)
       return null
     }
     const userId = companionUserId()
-    const { bones, inspirationSeed } = roll(userId)
+    const generation = getGlobalConfig().companionGeneration ?? 0
+    const { bones, inspirationSeed } = roll(userId, generation)
     const soul: StoredCompanion = {
       name: `Buddy-${inspirationSeed.toString(36).slice(0, 4)}`,
       personality: `A ${bones.rarity} ${bones.species} who loves debugging.`,
@@ -61,9 +62,8 @@ export async function call(
     }
     saveGlobalConfig(config => ({ ...config, companion: soul }))
     const companion = getCompanion()!
-    const color = RARITY_COLORS[companion.rarity]
     const stars = RARITY_STARS[companion.rarity]
-    onDone(`🥚 Hatched ${companion.name}! (${companion.species} · ${companion.rarity} ${stars})`)
+    onDone(`🥚 孵化成功！${companion.name} (${companion.species} · ${companion.rarity} ${stars})`)
     return null
   }
 
@@ -86,8 +86,9 @@ export async function call(
     }
     const name = companion.name
     saveGlobalConfig(config => {
+      const generation = (config.companionGeneration ?? 0) + 1
       const { companion: _, companionMuted: __, ...rest } = config
-      return rest as typeof config
+      return { ...rest, companionGeneration: generation } as typeof config
     })
     onDone(`${name} 挥了挥小爪子，消失在了代码的海洋里… 👋 再见啦～`)
     return null

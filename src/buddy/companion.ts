@@ -103,9 +103,10 @@ function rollFrom(rng: () => number): Roll {
 
 // Called from three hot paths (500ms sprite tick, per-keystroke PromptInput,
 // per-turn observer) with the same userId → cache the deterministic result.
+// generation changes on each release+rehatch so the user gets a new companion.
 let rollCache: { key: string; value: Roll } | undefined
-export function roll(userId: string): Roll {
-  const key = userId + SALT
+export function roll(userId: string, generation = 0): Roll {
+  const key = userId + SALT + (generation > 0 ? `:g${generation}` : '')
   if (rollCache?.key === key) return rollCache.value
   const value = rollFrom(mulberry32(hashString(key)))
   rollCache = { key, value }
@@ -125,9 +126,11 @@ export function companionUserId(): string {
 // so species renames and SPECIES-array edits can't break stored companions,
 // and editing config.companion can't fake a rarity.
 export function getCompanion(): Companion | undefined {
-  const stored = getGlobalConfig().companion
+  const config = getGlobalConfig()
+  const stored = config.companion
   if (!stored) return undefined
-  const { bones } = roll(companionUserId())
+  const generation = config.companionGeneration ?? 0
+  const { bones } = roll(companionUserId(), generation)
   // bones last so stale bones fields in old-format configs get overridden
   return { ...stored, ...bones }
 }
