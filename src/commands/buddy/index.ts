@@ -7,7 +7,7 @@ const buddy = {
   description: 'Meet your coding companion',
   isEnabled: () => isBuddyLive(),
   isHidden: false,
-  argumentHint: '[hatch|pet|mute|unmute|stats]',
+  argumentHint: '[hatch|pet|mute|unmute|stats|release]',
   immediate: true,
   load: () => import('./buddy.js'),
 } satisfies Command

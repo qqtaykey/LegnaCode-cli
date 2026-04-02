@@ -78,6 +78,21 @@ export async function call(
     return null
   }
 
+  if (arg === 'release') {
+    const companion = getCompanion()
+    if (!companion) {
+      onDone('没有宠物可以放生哦～')
+      return null
+    }
+    const name = companion.name
+    saveGlobalConfig(config => {
+      const { companion: _, companionMuted: __, ...rest } = config
+      return rest as typeof config
+    })
+    onDone(`${name} 挥了挥小爪子，消失在了代码的海洋里… 👋 再见啦～`)
+    return null
+  }
+
   if (arg === 'mute') {
     saveGlobalConfig(config => ({ ...config, companionMuted: true }))
     onDone('Companion muted.')
