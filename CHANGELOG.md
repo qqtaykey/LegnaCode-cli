@@ -2,6 +2,26 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.0.5] - 2026-04-02
+
+### New Features
+
+- **AGENT_TRIGGERS** — `/loop` cron 调度命令，CronCreate/Delete/List 工具，本地定时任务引擎
+- **TREE_SITTER_BASH** — 纯 TypeScript bash AST 解析器，用于命令安全分析
+- **TREE_SITTER_BASH_SHADOW** — tree-sitter 与 legacy 解析器的 shadow 对比模式
+- **MCP_SKILLS** — 从 MCP 服务器的 `skill://` 资源自动发现并注册技能命令
+- **REACTIVE_COMPACT** — 413/过载错误时自动触发上下文压缩
+- **REVIEW_ARTIFACT** — `/review` 代码审查技能 + ReviewArtifact 工具 + 权限 UI
+
+### Infrastructure
+
+- 新增 `src/skills/mcpSkills.ts` — MCP 技能发现模块
+- 新增 `src/services/compact/reactiveCompact.ts` — 响应式压缩策略
+- 新增 `src/tools/ReviewArtifactTool/` — 代码审查工具
+- 新增 `src/components/permissions/ReviewArtifactPermissionRequest/` — 审查权限 UI
+- 新增 `src/skills/bundled/hunter.ts` — /review 技能注册
+- 累计已开启 39/87 个 feature flags
+
 ## [1.0.4] - 2026-04-02
 
 ### New Features
