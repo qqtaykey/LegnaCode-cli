@@ -58,13 +58,6 @@ const result = await Bun.build({
     '@ant/computer-use-mcp/sentinelApps',
     '@ant/computer-use-mcp/types',
     '@ant/computer-use-swift',
-    '@anthropic-ai/mcpb',
-    '@anthropic-ai/sandbox-runtime',
-    '@anthropic-ai/claude-agent-sdk',
-    'audio-capture.node',
-    'audio-capture-napi',
-    'modifiers-napi',
-    'color-diff-napi',
   ],
 })
 

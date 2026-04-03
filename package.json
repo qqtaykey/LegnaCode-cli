@@ -1,6 +1,6 @@
 {
   "name": "@legna-lnc/legnacode",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "LegnaCode — legna.lnc's official CLI for coding assistance",
   "type": "module",
   "bin": {
@@ -16,7 +16,15 @@
     "url": "https://github.com/LegnaOS/LegnaCode-cli.git"
   },
   "homepage": "https://github.com/LegnaOS/LegnaCode-cli",
-  "keywords": ["cli", "ai", "claude", "coding", "assistant", "legnacode", "anthropic"],
+  "keywords": [
+    "cli",
+    "ai",
+    "claude",
+    "coding",
+    "assistant",
+    "legnacode",
+    "anthropic"
+  ],
   "scripts": {
     "build": "bun run scripts/build.ts && python3 scripts/postbuild-fix.py",
     "compile": "bun run scripts/compile.ts",
@@ -133,10 +141,10 @@
     "bun": ">=1.2.0"
   },
   "optionalDependencies": {
-    "@legna-lnc/legnacode-darwin-arm64": "1.1.5",
-    "@legna-lnc/legnacode-darwin-x64": "1.1.5",
-    "@legna-lnc/legnacode-linux-x64": "1.1.5",
-    "@legna-lnc/legnacode-linux-arm64": "1.1.5",
-    "@legna-lnc/legnacode-win32-x64": "1.1.5"
+    "@legna-lnc/legnacode-darwin-arm64": "1.1.6",
+    "@legna-lnc/legnacode-darwin-x64": "1.1.6",
+    "@legna-lnc/legnacode-linux-x64": "1.1.6",
+    "@legna-lnc/legnacode-linux-arm64": "1.1.6",
+    "@legna-lnc/legnacode-win32-x64": "1.1.6"
   }
 }

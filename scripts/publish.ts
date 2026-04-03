@@ -1,43 +1,49 @@
 /**
- * Publish script for platform binary distribution.
- *
- * 1. Runs compile-all to build all platform binaries
- * 2. Publishes platform packages first, then the main package
+ * One-shot publish: bump → build webui → compile all → publish npm → git push.
  *
  * Usage:
- *   bun run scripts/publish.ts [--dry-run]
+ *   bun run scripts/publish.ts           # publish current version
+ *   bun run scripts/publish.ts --dry-run # npm publish --dry-run
  */
-
 import { resolve } from "path";
-import { readdirSync, readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
+import { execSync } from "child_process";
 
 const ROOT = resolve(import.meta.dir, "..");
 const dryRun = process.argv.includes("--dry-run");
+
+function run(cmd: string, cwd = ROOT) {
+  console.log(`\n> ${cmd}`);
+  execSync(cmd, { cwd, stdio: "inherit" });
+}
+
+// Step 0: Ensure all versions are synced
+const version = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8")).version;
+console.log(`\n=== Publishing v${version} ===`);
+run(`bun run scripts/bump.ts ${version}`);
+
+// Step 1: Build webui + inline
+console.log("\n=== Building WebUI ===");
+run("bun run scripts/build-webui.ts");
+
+// Step 2: Compile all platforms
+console.log("\n=== Compiling all platforms ===");
+run("bun run scripts/compile-all.ts");
+
+// Step 3: Publish platform packages
 const npmArgs = ["publish", "--access", "public"];
 if (dryRun) npmArgs.push("--dry-run");
 
-// Step 1: Compile all platforms
-console.log("=== Compiling all platforms ===\n");
-const compile = Bun.spawnSync(["bun", "run", "scripts/compile-all.ts"], {
-  cwd: ROOT,
-  stdio: ["inherit", "inherit", "inherit"],
-});
-if (compile.exitCode !== 0) {
-  console.error("Compile failed");
-  process.exit(1);
-}
-
-// Step 2: Publish platform packages
 const pkgBase = resolve(ROOT, ".npm-packages");
 const platformDirs = readdirSync(pkgBase, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-console.log("\n=== Publishing platform packages ===\n");
+console.log("\n=== Publishing platform packages ===");
 for (const dir of platformDirs) {
   const pkgDir = resolve(pkgBase, dir);
   const name = JSON.parse(readFileSync(resolve(pkgDir, "package.json"), "utf-8")).name;
-  console.log(`Publishing ${name}...`);
+  console.log(`\nPublishing ${name}@${version}...`);
   const r = Bun.spawnSync(["npm", ...npmArgs], {
     cwd: pkgDir,
     stdio: ["inherit", "inherit", "inherit"],
@@ -48,8 +54,8 @@ for (const dir of platformDirs) {
   }
 }
 
-// Step 3: Publish main package
-console.log("\n=== Publishing main package ===\n");
+// Step 4: Publish main package
+console.log("\n=== Publishing main package ===");
 const main = Bun.spawnSync(["npm", ...npmArgs], {
   cwd: ROOT,
   stdio: ["inherit", "inherit", "inherit"],
@@ -59,4 +65,4 @@ if (main.exitCode !== 0) {
   process.exit(1);
 }
 
-console.log("\nDone" + (dryRun ? " (dry run)" : "") + ".");
+console.log(`\n=== v${version} published${dryRun ? " (dry run)" : ""} ===`);

@@ -2,6 +2,15 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.1.6] - 2026-04-03
+
+### Fixed
+
+- **Windows external module 报错** — 从编译 external 列表移除 `@anthropic-ai/sandbox-runtime`、`@anthropic-ai/mcpb`、`@anthropic-ai/claude-agent-sdk`、`audio-capture-napi`、`color-diff-napi`、`modifiers-napi`，让 stubs 代码直接打包进二进制，Windows 不再报 `Cannot find module`
+- **bin wrapper 多路径查找** — `npm/bin/legna.cjs` 增加全局 node_modules 扁平路径和嵌套路径 fallback，提升跨平台 npm 全局安装兼容性
+- **版本号自动化** — 新增 `scripts/bump.ts` 一键同步 package.json、bunfig.toml、webui/package.json、optionalDependencies 版本号
+- **发版流程自动化** — 重写 `scripts/publish.ts`，一键完成 bump → build webui → compile all → publish npm
+
 ## [1.1.5] - 2026-04-03
 
 ### New Features
