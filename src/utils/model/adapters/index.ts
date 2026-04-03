@@ -28,6 +28,12 @@ export interface ModelAdapter {
    * Return null to skip transformation.
    */
   transformResponse?(content: any[]): any[] | null
+
+  /**
+   * Return a user-facing message for provider-specific stop_reasons,
+   * or undefined if the stop_reason is not handled by this adapter.
+   */
+  getStopReasonMessage?(stopReason: string): string | undefined
 }
 
 // Lazy-loaded adapter registry — adapters are imported on first use
@@ -38,9 +44,15 @@ function getAdapters(): ModelAdapter[] {
     // Import adapters synchronously — they're lightweight
     const { MiMoAdapter } = require('./mimo.js')
     const { GLMAdapter } = require('./glm.js')
+    const { DeepSeekAdapter } = require('./deepseek.js')
+    const { KimiAdapter } = require('./kimi.js')
+    const { MiniMaxAdapter } = require('./minimax.js')
     _adapters = [
       MiMoAdapter,
       GLMAdapter,
+      DeepSeekAdapter,
+      KimiAdapter,
+      MiniMaxAdapter,
     ]
   }
   return _adapters
@@ -76,4 +88,14 @@ export function applyResponseAdapter(model: string, content: any[]): any[] {
   const adapter = getModelAdapter(model)
   if (!adapter?.transformResponse) return content
   return adapter.transformResponse(content) ?? content
+}
+
+/**
+ * Get a user-facing message for provider-specific stop_reasons.
+ * Returns undefined if no adapter matches or the stop_reason is not handled.
+ */
+export function getAdapterStopReasonMessage(model: string, stopReason: string): string | undefined {
+  const adapter = getModelAdapter(model)
+  if (!adapter?.getStopReasonMessage) return undefined
+  return adapter.getStopReasonMessage(stopReason)
 }

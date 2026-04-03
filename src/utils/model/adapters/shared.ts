@@ -51,9 +51,34 @@ export function stripUnsupportedFields(params: Record<string, any>): void {
   delete params.context_management
 }
 
+/** Strip Anthropic-only body fields, but keep metadata (for providers that support it) */
+export function stripUnsupportedFieldsKeepMetadata(params: Record<string, any>): void {
+  delete params.speed
+  delete params.output_config
+  delete params.context_management
+}
+
 /** Inject top_p default if not already set */
 export function injectTopP(params: Record<string, any>, defaultValue = 0.95): void {
   if (params.top_p === undefined) params.top_p = defaultValue
+}
+
+/** Strip reasoning_content from assistant messages (DeepSeek Anthropic compat) */
+export function stripReasoningContent(params: Record<string, any>): void {
+  if (!params.messages || !Array.isArray(params.messages)) return
+  params.messages = params.messages.map((msg: any) => {
+    if (msg.role === 'assistant' && msg.reasoning_content !== undefined) {
+      const { reasoning_content, ...rest } = msg
+      return rest
+    }
+    return msg
+  })
+}
+
+/** Strip sampling params that reasoner models ignore */
+export function stripReasonerSamplingParams(params: Record<string, any>): void {
+  delete params.temperature
+  delete params.top_p
 }
 
 /** Strip cache_control from system and message content blocks */

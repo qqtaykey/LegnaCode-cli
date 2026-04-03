@@ -44,13 +44,19 @@ const TARGETS = [
   { bun: "bun-windows-x64", os: "win32", cpu: "x64", pkg: "@legna-lnc/legnacode-win32-x64" },
 ] as const;
 
+const skipPlatforms = process.argv.slice(2)
+  .filter(a => a.startsWith('--skip='))
+  .flatMap(a => a.slice(7).split(','));
+
 const { defines, features } = parseBunfig();
 defines["MACRO.BUILD_TIME"] = `'"${new Date().toISOString()}"'`;
 
 const version = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8")).version;
 const outBase = resolve(ROOT, ".npm-packages");
 
-for (const t of TARGETS) {
+const targets = TARGETS.filter(t => !skipPlatforms.includes(`${t.os}-${t.cpu}`));
+
+for (const t of targets) {
   const isWin = t.os === "win32";
   const binName = isWin ? "legna.exe" : "cli";
   const tmpDir = resolve(ROOT, ".compile-tmp");

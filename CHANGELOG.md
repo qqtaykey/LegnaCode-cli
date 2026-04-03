@@ -2,6 +2,32 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.2.1] - 2026-04-04
+
+### New Features
+
+- **模型适配器层 (Model Adapter Layer)** — 统一的第三方模型兼容框架，自动检测模型/端点并应用对应变换
+- **MiMo (Xiaomi) 适配器** — api.xiaomimimo.com/anthropic，支持 mimo-v2-pro/omni/flash (1M ctx)
+  - simplifyThinking + forceAutoToolChoice + normalizeTools + stripBetas + injectTopP(0.95) + stripCacheControl
+  - 处理 content_filter / repetition_truncation stop_reason
+- **GLM (ZhipuAI) 适配器** — open.bigmodel.cn/api/anthropic，支持 glm-5.1/5/5-turbo/4.7/4.6/4.5 等
+  - 标准变换全套，服务端自动缓存（strip cache_control）
+- **DeepSeek 适配器** — api.deepseek.com/anthropic，支持 deepseek-chat/coder/reasoner
+  - stripReasoningContent 避免 400 错误，reasoner 模型自动 strip temperature/top_p
+- **Kimi (Moonshot) 适配器** — api.moonshot.ai/anthropic，支持 kimi-k2/k2.5/k2-turbo 等
+  - 保留 cache_control（Kimi 支持 prompt caching 折扣），stripReasoningContent
+- **MiniMax 适配器** — api.minimaxi.com/anthropic (中国区) + api.minimax.io/anthropic (国际区)
+  - 支持 MiniMax-M2.7/M2.5/M2.1/M2 全系列 (204K ctx)，大小写不敏感匹配
+  - 深度兼容：保留 metadata、tool_choice、cache_control、top_p（其他适配器均需 strip/force）
+  - 仅需 simplifyThinking + normalizeTools + stripBetas + stripUnsupportedFieldsKeepMetadata
+
+### Architecture
+
+- `src/utils/model/adapters/index.ts` — 适配器注册表 + match/transform 调度
+- `src/utils/model/adapters/shared.ts` — 12 个共享变换函数（含新增 stripUnsupportedFieldsKeepMetadata）
+- `src/utils/model/adapters/{mimo,glm,deepseek,kimi,minimax}.ts` — 5 个提供商适配器
+- `src/services/api/claude.ts` — paramsFromContext() 末尾调用 applyModelAdapter()
+
 ## [1.2.0] - 2026-04-03
 
 ### New Features

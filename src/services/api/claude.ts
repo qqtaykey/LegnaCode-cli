@@ -113,7 +113,7 @@ import {
   APIError,
   APIUserAbortError,
 } from '@anthropic-ai/sdk/error'
-import { applyModelAdapter } from '../../utils/model/adapters/index.js'
+import { applyModelAdapter, applyResponseAdapter, getAdapterStopReasonMessage } from '../../utils/model/adapters/index.js'
 import {
   getAfkModeHeaderLatched,
   getCacheEditingHeaderLatched,
@@ -2294,6 +2294,15 @@ async function* queryModel(
                 error: 'max_output_tokens',
               })
             }
+
+            // Provider-specific stop_reasons (e.g. MiMo content_filter)
+            const adapterStopMsg = getAdapterStopReasonMessage(options.model, stopReason as string)
+            if (adapterStopMsg) {
+              yield createAssistantAPIErrorMessage({
+                content: `${API_ERROR_MESSAGE_PREFIX}: ${adapterStopMsg}`,
+                error: 'invalid_request',
+              })
+            }
             break
           }
           case 'message_stop':
@@ -2576,7 +2585,7 @@ async function* queryModel(
         message: {
           ...result,
           content: normalizeContentFromAPI(
-            result.content,
+            applyResponseAdapter(options.model, result.content),
             tools,
             options.agentId,
           ),
@@ -2673,7 +2682,7 @@ async function* queryModel(
           message: {
             ...result,
             content: normalizeContentFromAPI(
-              result.content,
+              applyResponseAdapter(options.model, result.content),
               tools,
               options.agentId,
             ),
