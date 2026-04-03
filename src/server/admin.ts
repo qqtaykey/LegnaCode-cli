@@ -7,6 +7,7 @@
 
 import { readFileSync, writeFileSync, readdirSync, renameSync, copyFileSync, existsSync, mkdirSync } from 'fs'
 import { resolve, join, extname } from 'path'
+import { ADMIN_HTML } from './admin-ui-html.js'
 
 type Scope = 'claude' | 'legna'
 
@@ -211,29 +212,10 @@ function handleMigrate(body: any): Response {
   }
 }
 
-// Static file serving for SPA
-function serveStatic(url: URL): Response {
-  const distDir = resolve(import.meta.dir, '../../webui/dist')
-  const filePath = join(distDir, url.pathname === '/' ? 'index.html' : url.pathname)
-
-  if (existsSync(filePath)) {
-    const ext = extname(filePath)
-    return new Response(Bun.file(filePath), {
-      headers: { 'Content-Type': MIME[ext] || 'application/octet-stream' },
-    })
-  }
-
-  // SPA fallback: non-asset paths → index.html
-  const indexPath = join(distDir, 'index.html')
-  if (existsSync(indexPath)) {
-    return new Response(Bun.file(indexPath), {
-      headers: { 'Content-Type': 'text/html' },
-    })
-  }
-
-  return new Response('Admin UI not built. Run: cd webui && npm install && npm run build', {
-    status: 404,
-    headers: { 'Content-Type': 'text/plain' },
+// Serve the inlined SPA HTML for all non-API routes
+function serveStatic(): Response {
+  return new Response(ADMIN_HTML, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
   })
 }
 
@@ -263,7 +245,7 @@ export async function startAdminServer(opts: { port?: number } = {}) {
         }
       }
 
-      return serveStatic(url)
+      return serveStatic()
     },
   })
 
