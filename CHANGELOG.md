@@ -2,7 +2,7 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
-## [1.1.0] - 2026-04-03
+## [1.1.5] - 2026-04-03
 
 ### New Features
 
@@ -11,29 +11,23 @@ All notable changes to LegnaCode CLI will be documented in this file.
 - **配置文件切换** — 列出 settings*.json，显示 baseUrl/model，一键交换激活
 - **会话记录浏览** — 解析 projects 目录下所有 session jsonl 文件，显示项目路径、slug、时间、prompt 数量，复制 resume 命令
 - **配置迁移** — Claude ↔ LegnaCode 双向迁移，支持全量或选择性字段迁移（env/model/permissions 等），迁移前预览 diff
-- **npm 发布基础设施** — bin wrapper、compile-all 跨平台编译、publish 脚本
+- **npm 全平台发布** — bin wrapper (.cjs)、compile-all 跨平台编译（darwin/linux/win32）、publish 脚本
 - **OAuth 禁用** — `isAnthropicAuthEnabled()` 返回 false，移除 OAuth 登录流程
+
+### Fixed (1.1.1 ~ 1.1.5)
+
+- bin wrapper 改为 `.cjs` 修复 ESM `require` 报错
+- `optionalDependencies` 平台包版本对齐
+- 退出 admin server 时清屏恢复终端
+- WebUI 前端内联到二进制，不再依赖外部 `webui/dist/`
+- 所有包版本统一为 1.1.5
 
 ### Architecture
 
-- 后端：`src/server/admin.ts` — Bun.serve REST API + SPA 静态文件服务
+- 后端：`src/server/admin.ts` — Bun.serve REST API，SPA 内联为字符串常量
 - 前端：`webui/` — React 18 + Vite + Tailwind SPA，Tab 切换 scope
+- 内联：`scripts/inline-webui.ts` → `src/server/admin-ui-html.ts`
 - CLI：`src/entrypoints/cli.tsx` — `admin` fast-path，零额外模块加载
-- 构建：`scripts/build-webui.ts` — WebUI 构建脚本
-
-### Files Changed
-
-| 文件 | 改动 |
-|------|------|
-| `src/server/admin.ts` | 新增：HTTP API + 静态文件服务 |
-| `src/entrypoints/cli.tsx` | admin fast-path |
-| `webui/` | 新增：完整 React SPA（package.json, vite, tailwind, 4 个面板组件） |
-| `scripts/build-webui.ts` | 新增：WebUI 构建脚本 |
-| `scripts/compile-all.ts` | 新增：跨平台编译 |
-| `scripts/publish.ts` | 新增：npm 发布 |
-| `.gitignore` | 添加 webui/dist/, webui/node_modules/ |
-| `bunfig.toml` | 版本号 → 1.1.0 |
-| `package.json` | 版本号 → 1.1.0 |
 
 ## [1.0.9] - 2026-04-03
 
