@@ -268,13 +268,25 @@ export async function startAdminServer(opts: { port?: number } = {}) {
   })
 
   console.log(`\n  LegnaCode Admin WebUI`)
-  console.log(`  http://localhost:${port}\n`)
+  console.log(`  http://localhost:${port}`)
+  console.log(`  Ctrl+C 退出\n`)
 
+  // Try to open browser
   try {
     const { exec } = await import('child_process')
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
     exec(`${cmd} http://localhost:${port}`)
   } catch {}
+
+  // Clean shutdown: stop server, clear output, restore terminal
+  const shutdown = () => {
+    server.stop()
+    // Clear the lines we printed + move cursor to top-left
+    process.stdout.write('\x1b[2J\x1b[H')
+    process.exit(0)
+  }
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
 
   return server
 }
