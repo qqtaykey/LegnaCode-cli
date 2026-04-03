@@ -2,6 +2,12 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.1.7] - 2026-04-03
+
+### Fixed
+
+- **彻底修复 Windows external module 报错** — 清空编译 external 列表，所有 stubs 模块（`@ant/*`、`@anthropic-ai/*`、native napi）全部打包进二进制，不再依赖运行时外部模块
+
 ## [1.1.6] - 2026-04-03
 
 ### Fixed

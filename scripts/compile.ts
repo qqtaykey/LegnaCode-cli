@@ -51,14 +51,7 @@ const result = await Bun.build({
   compile: true,
   define: defines,
   features,
-  external: [
-    '@ant/claude-for-chrome-mcp',
-    '@ant/computer-use-input',
-    '@ant/computer-use-mcp',
-    '@ant/computer-use-mcp/sentinelApps',
-    '@ant/computer-use-mcp/types',
-    '@ant/computer-use-swift',
-  ],
+  external: [],
 })
 
 if (!result.success) {

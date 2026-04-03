@@ -34,14 +34,7 @@ function parseBunfig(): { defines: Record<string, string>; features: string[] } 
   return { defines, features };
 }
 
-const EXTERNAL = [
-  "@ant/claude-for-chrome-mcp",
-  "@ant/computer-use-input",
-  "@ant/computer-use-mcp",
-  "@ant/computer-use-mcp/sentinelApps",
-  "@ant/computer-use-mcp/types",
-  "@ant/computer-use-swift",
-];
+const EXTERNAL: string[] = [];
 
 const TARGETS = [
   { bun: "bun-darwin-arm64", os: "darwin", cpu: "arm64", pkg: "@legna-lnc/legnacode-darwin-arm64" },
