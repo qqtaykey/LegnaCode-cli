@@ -63,9 +63,10 @@ if (!result.success) {
 }
 
 // Move binary to project root
-const { renameSync, rmSync } = await import('fs')
-const tmpBin = resolve(ROOT, '.compile-tmp/cli')
-const outBin = resolve(ROOT, 'legna')
+const { renameSync, rmSync, existsSync } = await import('fs')
+const ext = process.platform === 'win32' ? '.exe' : ''
+const tmpBin = resolve(ROOT, `.compile-tmp/cli${ext}`)
+const outBin = resolve(ROOT, `legna${ext}`)
 try { renameSync(tmpBin, outBin) } catch { /* cross-device */
   const { copyFileSync } = await import('fs')
   copyFileSync(tmpBin, outBin)

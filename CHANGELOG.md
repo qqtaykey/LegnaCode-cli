@@ -2,6 +2,13 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.1.10] - 2026-04-03
+
+### Fixed
+
+- **Windows 编译脚本修复** — `scripts/compile.ts` 在 Windows 上正确处理 `.exe` 后缀，修复编译后找不到输出文件的问题
+- **Windows 原生二进制重新编译发布** — 使用 Windows 本机 Bun 编译原生 `legna.exe`，替代之前交叉编译的版本
+
 ## [1.1.9] - 2026-04-03
 
 ### Fixed
