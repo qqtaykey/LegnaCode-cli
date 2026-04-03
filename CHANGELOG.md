@@ -2,6 +2,19 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.2.0] - 2026-04-03
+
+### New Features
+
+- **会话按项目分组** — WebUI 会话记录面板按项目路径分组显示
+- **resume 命令带 cd** — 复制的 resume 命令自动包含 `cd` 到项目目录（Windows 用 `cd /d`）
+- **迁移支持会话记录** — 配置迁移面板新增"同时迁移会话记录"选项，复制 `projects/` 目录
+- **Windows 原生编译** — Windows 二进制改为在 Windows 上原生编译
+
+### Fixed
+
+- 迁移面板字段名修正为实际 settings.json 字段
+
 ## [1.1.10] - 2026-04-03
 
 ### Fixed
