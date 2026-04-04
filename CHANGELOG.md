@@ -2,6 +2,35 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.3.0] - 2026-04-04
+
+### New Features
+
+- **项目本地化存储** — 会话、skills、memory、rules、settings 全部下沉到 `<project>/.legna/` 目录
+  - 新会话写入 `<project>/.legna/sessions/<uuid>.jsonl`，跟着项目走
+  - 项目级 skills/rules/settings/agent-memory/workflows 统一到 `.legna/` 下
+  - `.legna/` 自动加入 `.gitignore`
+- **全局数据迁移** — 首次启动自动从 `~/.claude/` 单向迁移到 `~/.legna/`
+  - 迁移 settings.json、credentials、rules、skills、agents、plugins、keybindings 等
+  - 不覆盖已有文件，迁移完成写入 `.migration-done` 标记
+  - `LEGNA_NO_CONFIG_SYNC=1` 可禁止
+- **`legna migrate` 命令** — 手动迁移数据
+  - `--global` 仅迁移全局数据
+  - `--sessions` 仅迁移当前项目会话到本地
+  - `--all` 全部迁移（默认）
+  - `--dry-run` 预览模式
+- **三级 fallback 读取** — 读取时自动搜索 `.legna/` → `.claude/` → `~/.legna/` → `~/.claude/`，零破坏向后兼容
+
+### Architecture
+
+- `src/utils/legnaPathResolver.ts` — 统一路径解析（PROJECT_FOLDER/LEGACY_FOLDER/resolveProjectPath）
+- `src/utils/ensureLegnaGitignored.ts` — 自动 gitignore 工具
+- `src/utils/envUtils.ts` — 重构全局迁移逻辑，删除旧的 syncClaudeConfigToLegna
+- `src/utils/sessionStoragePortable.ts` — 新增 getLocalSessionsDir/getLegacyProjectsDir，重构 resolveSessionFilePath
+- `src/utils/sessionStorage.ts` — 会话写入路径切换到项目本地
+- `src/utils/listSessionsImpl.ts` — 多源扫描合并（本地 + 全局 + legacy）
+- `src/commands/migrate/` — CLI 迁移命令
+
 ## [1.2.1] - 2026-04-04
 
 ### New Features

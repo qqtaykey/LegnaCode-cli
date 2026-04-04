@@ -8,12 +8,13 @@
 import { readFileSync, writeFileSync, readdirSync, renameSync, copyFileSync, existsSync, mkdirSync } from 'fs'
 import { resolve, join, extname } from 'path'
 import { ADMIN_HTML } from './admin-ui-html.js'
+import { getClaudeConfigHomeDir } from '../utils/envUtils.js'
 
 type Scope = 'claude' | 'legna'
 
 function scopeDir(scope: Scope): string {
   const home = process.env.HOME || process.env.USERPROFILE || '~'
-  return scope === 'claude' ? resolve(home, '.claude') : resolve(home, '.legna')
+  return scope === 'claude' ? resolve(home, '.claude') : getClaudeConfigHomeDir()
 }
 
 const MIME: Record<string, string> = {

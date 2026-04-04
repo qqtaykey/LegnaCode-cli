@@ -37,6 +37,12 @@ export function getAddDirEnabledPlugins(): NonNullable<
   const result: NonNullable<SettingsJson['enabledPlugins']> = {}
   for (const dir of getAdditionalDirectoriesForClaudeMd()) {
     for (const file of SETTINGS_FILES) {
+      // Try .legna/ first, then fallback to .claude/
+      const { settings: legnaSettings } = parseSettingsFile(join(dir, '.legna', file))
+      if (legnaSettings?.enabledPlugins) {
+        Object.assign(result, legnaSettings.enabledPlugins)
+        continue
+      }
       const { settings } = parseSettingsFile(join(dir, '.claude', file))
       if (!settings?.enabledPlugins) {
         continue
@@ -60,6 +66,12 @@ export function getAddDirExtraMarketplaces(): Record<
   const result: Record<string, ExtraKnownMarketplace> = {}
   for (const dir of getAdditionalDirectoriesForClaudeMd()) {
     for (const file of SETTINGS_FILES) {
+      // Try .legna/ first, then fallback to .claude/
+      const { settings: legnaSettings } = parseSettingsFile(join(dir, '.legna', file))
+      if (legnaSettings?.extraKnownMarketplaces) {
+        Object.assign(result, legnaSettings.extraKnownMarketplaces)
+        continue
+      }
       const { settings } = parseSettingsFile(join(dir, '.claude', file))
       if (!settings?.extraKnownMarketplaces) {
         continue

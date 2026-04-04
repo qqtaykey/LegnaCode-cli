@@ -1,47 +1,109 @@
 import memoize from 'lodash-es/memoize.js'
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'fs'
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  writeFileSync,
+} from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
+// ---------------------------------------------------------------------------
+// Global migration: ~/.claude/ → ~/.legna/ (one-way, first-run only)
+// ---------------------------------------------------------------------------
+
+const MIGRATION_MARKER = '.migration-done'
+
+/** Files to migrate from ~/.claude/ to ~/.legna/ */
+const MIGRATE_FILES = [
+  'settings.json',
+  'settings.local.json',
+  '.credentials.json',
+  '.config.json',
+  'LEGNA.md',
+  'keybindings.json',
+  'completion.zsh',
+  'completion.bash',
+]
+
+/** Directories to migrate (recursive copy) */
+const MIGRATE_DIRS = [
+  'rules',
+  'skills',
+  'agents',
+  'plugins',
+]
+
 /**
- * Sync ~/.claude/settings.json → ~/.legna/settings.json on startup.
- * - If .legna/settings.json missing but .claude/settings.json exists → copy
- * - If both exist and differ → warn to stderr, do NOT overwrite
- * - Disabled by LEGNA_NO_CONFIG_SYNC=1
+ * One-time migration from ~/.claude/ → ~/.legna/.
+ * - Skipped if ~/.legna/.migration-done exists
+ * - Skipped if LEGNA_NO_CONFIG_SYNC=1
+ * - Does NOT migrate projects/ (sessions read via fallback chain)
+ * - Never overwrites existing files in ~/.legna/
  */
-function syncClaudeConfigToLegna(): void {
+function runGlobalMigration(): void {
   if (process.env.LEGNA_NO_CONFIG_SYNC === '1') return
   const home = homedir()
-  const claudeSettings = join(home, '.claude', 'settings.json')
+  const claudeDir = join(home, '.claude')
   const legnaDir = join(home, '.legna')
-  const legnaSettings = join(legnaDir, 'settings.json')
 
-  if (!existsSync(claudeSettings)) return
-
-  if (!existsSync(legnaSettings)) {
-    // .claude exists, .legna doesn't → migrate
+  if (existsSync(join(legnaDir, MIGRATION_MARKER))) return
+  if (!existsSync(claudeDir)) {
+    // No .claude to migrate from — just ensure .legna exists and mark done
     try {
-      if (!existsSync(legnaDir)) mkdirSync(legnaDir, { recursive: true })
-      copyFileSync(claudeSettings, legnaSettings)
-    } catch {
-      // best-effort, don't crash startup
-    }
+      mkdirSync(legnaDir, { recursive: true })
+      writeFileSync(
+        join(legnaDir, MIGRATION_MARKER),
+        JSON.stringify({ migratedAt: new Date().toISOString(), version: 1 }),
+      )
+    } catch { /* best-effort */ }
     return
   }
 
-  // Both exist — check if they differ
   try {
-    const a = readFileSync(claudeSettings, 'utf-8')
-    const b = readFileSync(legnaSettings, 'utf-8')
-    if (a !== b) {
-      process.stderr.write(
-        '\x1b[33m[legna]\x1b[0m ~/.claude/settings.json and ~/.legna/settings.json differ.\n' +
-        '  Using ~/.legna/settings.json. Set LEGNA_NO_CONFIG_SYNC=1 to silence this warning.\n',
-      )
+    mkdirSync(legnaDir, { recursive: true })
+  } catch { /* best-effort */ }
+
+  // Migrate individual files
+  for (const file of MIGRATE_FILES) {
+    const src = join(claudeDir, file)
+    const dst = join(legnaDir, file)
+    if (existsSync(src) && !existsSync(dst)) {
+      try { copyFileSync(src, dst) } catch { /* best-effort */ }
     }
-  } catch {
-    // ignore read errors
   }
+
+  // Migrate directories (recursive)
+  for (const dir of MIGRATE_DIRS) {
+    const src = join(claudeDir, dir)
+    const dst = join(legnaDir, dir)
+    if (existsSync(src) && !existsSync(dst)) {
+      try { cpSync(src, dst, { recursive: true }) } catch { /* best-effort */ }
+    }
+  }
+
+  // Also migrate any .claude.*.json config files (OAuth variants)
+  try {
+    for (const entry of readdirSync(claudeDir)) {
+      if (entry.startsWith('.claude') && entry.endsWith('.json') && entry !== '.credentials.json') {
+        const src = join(claudeDir, entry)
+        const dst = join(legnaDir, entry)
+        if (!existsSync(dst)) {
+          try { copyFileSync(src, dst) } catch { /* best-effort */ }
+        }
+      }
+    }
+  } catch { /* best-effort */ }
+
+  // Mark migration complete
+  try {
+    writeFileSync(
+      join(legnaDir, MIGRATION_MARKER),
+      JSON.stringify({ migratedAt: new Date().toISOString(), version: 1 }),
+    )
+  } catch { /* best-effort */ }
 }
 
 // Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR so
@@ -52,18 +114,8 @@ export const getClaudeConfigHomeDir = memoize(
       return process.env.CLAUDE_CONFIG_DIR.normalize('NFC')
     }
     const legnaDir = join(homedir(), '.legna')
-    const claudeDir = join(homedir(), '.claude')
-
-    // Sync .claude → .legna before deciding which dir to use
-    syncClaudeConfigToLegna()
-
-    // Use .legna if it has config, otherwise fall back to .claude for compat
-    if (existsSync(join(legnaDir, 'settings.json')) || existsSync(join(legnaDir, 'sessions'))) {
-      return legnaDir.normalize('NFC')
-    }
-    if (existsSync(claudeDir)) {
-      return claudeDir.normalize('NFC')
-    }
+    // Run one-time migration from ~/.claude/ → ~/.legna/
+    runGlobalMigration()
     return legnaDir.normalize('NFC')
   },
   () => process.env.CLAUDE_CONFIG_DIR,

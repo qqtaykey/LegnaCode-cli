@@ -200,26 +200,26 @@ export function getProjectsDir(): string {
 }
 
 export function getTranscriptPath(): string {
-  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
-  return join(projectDir, `${getSessionId()}.jsonl`)
+  const sessionProjectDir = getSessionProjectDir()
+  if (sessionProjectDir) {
+    return join(sessionProjectDir, `${getSessionId()}.jsonl`)
+  }
+  // New sessions write to project-local .legna/sessions/
+  const cwd = getOriginalCwd()
+  const localDir = join(cwd, '.legna', 'sessions')
+  return join(localDir, `${getSessionId()}.jsonl`)
 }
 
 export function getTranscriptPathForSession(sessionId: string): string {
-  // When asking for the CURRENT session's transcript, honor sessionProjectDir
-  // the same way getTranscriptPath() does. Without this, hooks get a
-  // transcript_path computed from originalCwd while the actual file was
-  // written to sessionProjectDir (set by switchActiveSession on resume/branch)
-  // — different directories, so the hook sees MISSING (gh-30217). CC-34
-  // made sessionId + sessionProjectDir atomic precisely to prevent this
-  // kind of drift; this function just wasn't updated to read both.
-  //
-  // For OTHER session IDs we can only guess via originalCwd — we don't
-  // track a sessionId→projectDir map. Callers wanting a specific other
-  // session's path should pass fullPath explicitly (most save* functions
-  // already accept this).
   if (sessionId === getSessionId()) {
     return getTranscriptPath()
   }
+  // For other sessions, try project-local first
+  const cwd = getOriginalCwd()
+  const localPath = join(cwd, '.legna', 'sessions', `${sessionId}.jsonl`)
+  const { existsSync } = require('fs') as typeof import('fs')
+  if (existsSync(localPath)) return localPath
+  // Fallback to global project dir
   const projectDir = getProjectDir(getOriginalCwd())
   return join(projectDir, `${sessionId}.jsonl`)
 }
@@ -245,10 +245,8 @@ export function clearAgentTranscriptSubdir(agentId: string): void {
 }
 
 export function getAgentTranscriptPath(agentId: AgentId): string {
-  // Same sessionProjectDir consistency as getTranscriptPathForSession —
-  // subagent transcripts live under the session dir, so if the session
-  // transcript is at sessionProjectDir, subagent transcripts are too.
-  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  const sessionProjectDir = getSessionProjectDir()
+  const projectDir = sessionProjectDir ?? join(getOriginalCwd(), '.legna', 'sessions')
   const sessionId = getSessionId()
   const subdir = agentTranscriptSubdirs.get(agentId)
   const base = subdir
@@ -1271,6 +1269,14 @@ class Project {
   private ensureCurrentSessionFile(): string {
     if (this.sessionFile === null) {
       this.sessionFile = getTranscriptPath()
+      // Ensure the .legna/sessions/ directory exists and is gitignored
+      const { mkdirSync } = require('fs') as typeof import('fs')
+      const { dirname } = require('path') as typeof import('path')
+      mkdirSync(dirname(this.sessionFile), { recursive: true, mode: 0o700 })
+      try {
+        const { ensureLegnaGitignored } = require('./ensureLegnaGitignored.js') as typeof import('./ensureLegnaGitignored.js')
+        ensureLegnaGitignored(getOriginalCwd())
+      } catch { /* best-effort */ }
     }
 
     return this.sessionFile
@@ -1597,8 +1603,8 @@ export async function hydrateRemoteSession(
       (await sessionIngress.getSessionLogs(sessionId, ingressUrl)) || []
 
     // Ensure the project directory and session file exist
-    const projectDir = getProjectDir(getOriginalCwd())
-    await mkdir(projectDir, { recursive: true, mode: 0o700 })
+    const localDir = join(getOriginalCwd(), '.legna', 'sessions')
+    await mkdir(localDir, { recursive: true, mode: 0o700 })
 
     const sessionFile = getTranscriptPathForSession(sessionId)
 
@@ -2557,12 +2563,30 @@ async function trackSessionBranchingAnalytics(
 }
 
 export async function fetchLogs(limit?: number): Promise<LogOption[]> {
-  const projectDir = getProjectDir(getOriginalCwd())
-  const logs = await getSessionFilesLite(projectDir, limit, getOriginalCwd())
+  // Merge sessions from project-local .legna/sessions/ and global project dir
+  const cwd = getOriginalCwd()
+  const localDir = join(cwd, '.legna', 'sessions')
+  const globalDir = getProjectDir(cwd)
 
-  await trackSessionBranchingAnalytics(logs)
+  // Gather from both sources, deduplicate by sessionId
+  const localLogs = await getSessionFilesLite(localDir, undefined, cwd).catch(() => [] as LogOption[])
+  const globalLogs = await getSessionFilesLite(globalDir, undefined, cwd).catch(() => [] as LogOption[])
 
-  return logs
+  const byId = new Map<string, LogOption>()
+  for (const log of [...localLogs, ...globalLogs]) {
+    const existing = byId.get(log.sessionId)
+    if (!existing || log.lastModified > existing.lastModified) {
+      byId.set(log.sessionId, log)
+    }
+  }
+
+  const logs = [...byId.values()]
+  logs.sort((a, b) => b.lastModified - a.lastModified)
+  const result = limit ? logs.slice(0, limit) : logs
+
+  await trackSessionBranchingAnalytics(result)
+
+  return result
 }
 
 /**

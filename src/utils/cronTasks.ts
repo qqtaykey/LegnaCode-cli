@@ -71,7 +71,7 @@ export type CronTask = {
 
 type CronFile = { tasks: CronTask[] }
 
-const CRON_FILE_REL = join('.claude', 'scheduled_tasks.json')
+const CRON_FILE_REL = join('.legna', 'scheduled_tasks.json')
 
 /**
  * Path to the cron file. `dir` defaults to getProjectRoot() — pass it

@@ -250,6 +250,13 @@ export function getProjectDirsUpToHome(
       break
     }
 
+    const legnaSubdir = join(current, '.legna', subdir)
+    try {
+      statSync(legnaSubdir)
+      dirs.push(legnaSubdir)
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) throw e
+    }
     const claudeSubdir = join(current, '.claude', subdir)
     // Filter to existing dirs. This is a perf filter (avoids spawning
     // ripgrep on non-existent dirs downstream) and the worktree fallback
@@ -301,7 +308,7 @@ export const loadMarkdownFilesForSubdir = memoize(
   ): Promise<MarkdownFile[]> {
     const searchStartTime = Date.now()
     const userDir = join(getClaudeConfigHomeDir(), subdir)
-    const managedDir = join(getManagedFilePath(), '.claude', subdir)
+    const managedDir = join(getManagedFilePath(), '.legna', subdir)
     const projectDirs = getProjectDirsUpToHome(subdir, cwd)
 
     // For git worktrees where the worktree does NOT have .claude/<subdir> checked
@@ -320,13 +327,23 @@ export const loadMarkdownFilesForSubdir = memoize(
     const gitRoot = findGitRoot(cwd)
     const canonicalRoot = findCanonicalGitRoot(cwd)
     if (gitRoot && canonicalRoot && canonicalRoot !== gitRoot) {
-      const worktreeSubdir = normalizePathForComparison(
+      const worktreeLegnaSubdir = normalizePathForComparison(
+        join(gitRoot, '.legna', subdir),
+      )
+      const worktreeClaudeSubdir = normalizePathForComparison(
         join(gitRoot, '.claude', subdir),
       )
       const worktreeHasSubdir = projectDirs.some(
-        dir => normalizePathForComparison(dir) === worktreeSubdir,
+        dir => {
+          const norm = normalizePathForComparison(dir)
+          return norm === worktreeLegnaSubdir || norm === worktreeClaudeSubdir
+        },
       )
       if (!worktreeHasSubdir) {
+        const mainLegnaSubdir = join(canonicalRoot, '.legna', subdir)
+        if (!projectDirs.includes(mainLegnaSubdir)) {
+          projectDirs.push(mainLegnaSubdir)
+        }
         const mainClaudeSubdir = join(canonicalRoot, '.claude', subdir)
         if (!projectDirs.includes(mainClaudeSubdir)) {
           projectDirs.push(mainClaudeSubdir)

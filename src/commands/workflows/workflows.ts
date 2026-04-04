@@ -6,18 +6,18 @@ import type { LocalCommandModule } from '../../types/command.js'
 const mod: LocalCommandModule = {
   async call() {
     const cwd = getOriginalCwd()
-    const workflowDir = path.join(cwd, '.claude', 'workflows')
+    const workflowDir = path.join(cwd, '.legna', 'workflows')
 
     let entries: string[]
     try {
       entries = await fs.readdir(workflowDir)
     } catch {
-      return { type: 'text', value: 'No .claude/workflows/ directory found.' }
+      return { type: 'text', value: 'No .legna/workflows/ directory found.' }
     }
 
     const mdFiles = entries.filter(f => f.endsWith('.md'))
     if (mdFiles.length === 0) {
-      return { type: 'text', value: 'No workflows found in .claude/workflows/' }
+      return { type: 'text', value: 'No workflows found in .legna/workflows/' }
     }
 
     const lines = mdFiles.map(f => `  - ${f.replace(/\.md$/, '')}`)

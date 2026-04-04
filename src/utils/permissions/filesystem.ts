@@ -75,6 +75,7 @@ export const DANGEROUS_DIRECTORIES = [
   '.git',
   '.vscode',
   '.idea',
+  '.legna',
   '.claude',
 ] as const
 
@@ -106,8 +107,16 @@ export function getClaudeSkillScope(
 
   const bases = [
     {
+      dir: expandPath(join(getOriginalCwd(), '.legna', 'skills')),
+      prefix: '/.legna/skills/',
+    },
+    {
       dir: expandPath(join(getOriginalCwd(), '.claude', 'skills')),
       prefix: '/.claude/skills/',
+    },
+    {
+      dir: expandPath(join(homedir(), '.legna', 'skills')),
+      prefix: '~/.legna/skills/',
     },
     {
       dir: expandPath(join(homedir(), '.claude', 'skills')),
@@ -208,10 +217,12 @@ export function isClaudeSettingsPath(filePath: string): boolean {
 
   // Use platform separator so endsWith checks work on both Unix (/) and Windows (\)
   if (
+    normalizedPath.endsWith(`${sep}.legna${sep}settings.json`) ||
+    normalizedPath.endsWith(`${sep}.legna${sep}settings.local.json`) ||
     normalizedPath.endsWith(`${sep}.claude${sep}settings.json`) ||
     normalizedPath.endsWith(`${sep}.claude${sep}settings.local.json`)
   ) {
-    // Include .claude/settings.json even for other projects
+    // Include .legna/settings.json and .claude/settings.json even for other projects
     return true
   }
   // Check for current project's settings files (including managed settings and CLI args)
@@ -227,14 +238,20 @@ function isClaudeConfigFilePath(filePath: string): boolean {
     return true
   }
 
-  // Check if file is within .claude/commands or .claude/agents directories
+  // Check if file is within .legna/ or .claude/ commands, agents, or skills directories
   // using proper path segment validation (not string matching with includes())
   // pathInWorkingPath now handles case-insensitive comparison to prevent bypasses
+  const legnaCommandsDir = join(getOriginalCwd(), '.legna', 'commands')
+  const legnaAgentsDir = join(getOriginalCwd(), '.legna', 'agents')
+  const legnaSkillsDir = join(getOriginalCwd(), '.legna', 'skills')
   const commandsDir = join(getOriginalCwd(), '.claude', 'commands')
   const agentsDir = join(getOriginalCwd(), '.claude', 'agents')
   const skillsDir = join(getOriginalCwd(), '.claude', 'skills')
 
   return (
+    pathInWorkingPath(filePath, legnaCommandsDir) ||
+    pathInWorkingPath(filePath, legnaAgentsDir) ||
+    pathInWorkingPath(filePath, legnaSkillsDir) ||
     pathInWorkingPath(filePath, commandsDir) ||
     pathInWorkingPath(filePath, agentsDir) ||
     pathInWorkingPath(filePath, skillsDir)
@@ -453,17 +470,17 @@ function isDangerousFilePathToAutoEdit(path: string): boolean {
         continue
       }
 
-      // Special case: .claude/worktrees/ is a structural path (where Claude stores
-      // git worktrees), not a user-created dangerous directory. Skip the .claude
-      // segment when it's followed by 'worktrees'. Any nested .claude directories
+      // Special case: .claude/worktrees/ and .legna/worktrees/ are structural paths (where Claude stores
+      // git worktrees), not user-created dangerous directories. Skip the .claude/.legna
+      // segment when it's followed by 'worktrees'. Any nested directories
       // within the worktree (not followed by 'worktrees') are still blocked.
-      if (dir === '.claude') {
+      if (dir === '.claude' || dir === '.legna') {
         const nextSegment = pathSegments[i + 1]
         if (
           nextSegment &&
           normalizeCaseForComparison(nextSegment) === 'worktrees'
         ) {
-          break // Skip this .claude, continue checking other segments
+          break // Skip this directory, continue checking other segments
         }
       }
 
@@ -1580,14 +1597,16 @@ export function checkEditableInternalPath(
     }
   }
 
-  // .claude/launch.json — desktop preview config (dev server command + port).
+  // .legna/launch.json / .claude/launch.json — desktop preview config (dev server command + port).
   // The desktop's preview_start MCP tool instructs Claude to create/update
   // this file as part of the preview workflow. Without this carve-out the
-  // .claude/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
+  // .legna/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
   // cascades: user clicks "Always allow" → setMode:acceptEdits suggestion
   // applied → silent downgrade from auto mode. Matches the project-level
-  // .claude/ only (not ~/.claude/) since launch.json is per-project.
+  // .legna/ only (not ~/.legna/) since launch.json is per-project.
   if (
+    normalizeCaseForComparison(normalizedPath) ===
+    normalizeCaseForComparison(join(getOriginalCwd(), '.legna', 'launch.json')) ||
     normalizeCaseForComparison(normalizedPath) ===
     normalizeCaseForComparison(join(getOriginalCwd(), '.claude', 'launch.json'))
   ) {

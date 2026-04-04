@@ -20,12 +20,12 @@ export const WorkflowTool = buildTool({
   maxResultSizeChars: 100_000,
 
   async description() {
-    return 'Execute a workflow defined in .claude/workflows/'
+    return 'Execute a workflow defined in .legna/workflows/'
   },
 
   async prompt() {
     return [
-      `The ${WORKFLOW_TOOL_NAME} tool executes multi-step workflows defined as Markdown files in the .claude/workflows/ directory.`,
+      `The ${WORKFLOW_TOOL_NAME} tool executes multi-step workflows defined as Markdown files in the .legna/workflows/ directory.`,
       'Each workflow file uses frontmatter for metadata (name, description) and Markdown body for step instructions.',
       'Use workflow_name to specify which workflow to run. Optionally pass args as key-value pairs.',
     ].join('\n')
@@ -33,7 +33,7 @@ export const WorkflowTool = buildTool({
 
   async call(input: Input) {
     const cwd = getOriginalCwd()
-    const workflowDir = path.join(cwd, '.claude', 'workflows')
+    const workflowDir = path.join(cwd, '.legna', 'workflows')
     const filePath = path.join(workflowDir, `${input.workflow_name}.md`)
 
     try {

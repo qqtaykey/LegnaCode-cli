@@ -49,6 +49,13 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Fast-path for `legna migrate`: migrate sessions/config from ~/.claude
+  if (args[0] === 'migrate') {
+    const { runMigrate } = await import('../commands/migrate/migrate.js');
+    await runMigrate(args.slice(1));
+    return;
+  }
+
   // For all other paths, load the startup profiler
   const {
     profileCheckpoint

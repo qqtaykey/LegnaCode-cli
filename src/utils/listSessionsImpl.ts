@@ -8,6 +8,7 @@
  */
 
 import type { Dirent } from 'fs'
+import { existsSync } from 'fs'
 import { readdir, stat } from 'fs/promises'
 import { basename, join } from 'path'
 import { getWorktreePathsPortable } from './getWorktreePathsPortable.js'
@@ -18,6 +19,8 @@ import {
   extractJsonStringField,
   extractLastJsonStringField,
   findProjectDir,
+  getLocalSessionsDir,
+  getLegacyProjectsDir,
   getProjectsDir,
   MAX_SANITIZED_LENGTH,
   readSessionLite,
@@ -312,7 +315,28 @@ async function gatherProjectCandidates(
   doStat: boolean,
 ): Promise<Candidate[]> {
   const canonicalDir = await canonicalizePath(dir)
+  const all: Candidate[] = []
 
+  // 1. Project-local: <dir>/.legna/sessions/
+  const localDir = getLocalSessionsDir(canonicalDir)
+  if (existsSync(localDir)) {
+    all.push(...(await listCandidates(localDir, doStat, canonicalDir)))
+  }
+
+  // 2. Global ~/.legna/projects/<sanitized>/
+  const projectDir = await findProjectDir(canonicalDir)
+  if (projectDir) {
+    all.push(...(await listCandidates(projectDir, doStat, canonicalDir)))
+  }
+
+  // 3. Legacy ~/.claude/projects/<sanitized>/
+  const legacyDir = join(getLegacyProjectsDir(), sanitizePath(canonicalDir))
+  try {
+    const legacyCandidates = await listCandidates(legacyDir, doStat, canonicalDir)
+    all.push(...legacyCandidates)
+  } catch { /* no legacy dir */ }
+
+  // 4. Worktree scanning
   let worktreePaths: string[]
   if (includeWorktrees) {
     try {
@@ -324,75 +348,57 @@ async function gatherProjectCandidates(
     worktreePaths = []
   }
 
-  // No worktrees (or git not available / scanning disabled) — just scan the single project dir
-  if (worktreePaths.length <= 1) {
-    const projectDir = await findProjectDir(canonicalDir)
-    if (!projectDir) return []
-    return listCandidates(projectDir, doStat, canonicalDir)
-  }
+  if (worktreePaths.length > 1) {
+    const projectsDir = getProjectsDir()
+    const caseInsensitive = process.platform === 'win32'
 
-  // Worktree-aware scanning: find all project dirs matching any worktree
-  const projectsDir = getProjectsDir()
-  const caseInsensitive = process.platform === 'win32'
+    const indexed = worktreePaths.map(wt => {
+      const sanitized = sanitizePath(wt)
+      return {
+        path: wt,
+        prefix: caseInsensitive ? sanitized.toLowerCase() : sanitized,
+      }
+    })
+    indexed.sort((a, b) => b.prefix.length - a.prefix.length)
 
-  // Sort worktree paths by sanitized prefix length (longest first) so
-  // more specific matches take priority over shorter ones
-  const indexed = worktreePaths.map(wt => {
-    const sanitized = sanitizePath(wt)
-    return {
-      path: wt,
-      prefix: caseInsensitive ? sanitized.toLowerCase() : sanitized,
+    let allDirents: Dirent[]
+    try {
+      allDirents = await readdir(projectsDir, { withFileTypes: true })
+    } catch {
+      allDirents = []
     }
-  })
-  indexed.sort((a, b) => b.prefix.length - a.prefix.length)
 
-  let allDirents: Dirent[]
-  try {
-    allDirents = await readdir(projectsDir, { withFileTypes: true })
-  } catch {
-    // Fall back to single project dir
-    const projectDir = await findProjectDir(canonicalDir)
-    if (!projectDir) return []
-    return listCandidates(projectDir, doStat, canonicalDir)
-  }
+    const seenDirs = new Set<string>()
+    // Mark canonical dir as seen (already scanned above)
+    const canonicalSanitized = sanitizePath(canonicalDir)
+    seenDirs.add(caseInsensitive ? canonicalSanitized.toLowerCase() : canonicalSanitized)
 
-  const all: Candidate[] = []
-  const seenDirs = new Set<string>()
+    for (const dirent of allDirents) {
+      if (!dirent.isDirectory()) continue
+      const dirName = caseInsensitive ? dirent.name.toLowerCase() : dirent.name
+      if (seenDirs.has(dirName)) continue
 
-  // Always include the user's actual directory (handles subdirectories
-  // like /repo/packages/my-app that won't match worktree root prefixes)
-  const canonicalProjectDir = await findProjectDir(canonicalDir)
-  if (canonicalProjectDir) {
-    const dirBase = basename(canonicalProjectDir)
-    seenDirs.add(caseInsensitive ? dirBase.toLowerCase() : dirBase)
-    all.push(
-      ...(await listCandidates(canonicalProjectDir, doStat, canonicalDir)),
-    )
-  }
-
-  for (const dirent of allDirents) {
-    if (!dirent.isDirectory()) continue
-    const dirName = caseInsensitive ? dirent.name.toLowerCase() : dirent.name
-    if (seenDirs.has(dirName)) continue
-
-    for (const { path: wtPath, prefix } of indexed) {
-      // Only use startsWith for truncated paths (>MAX_SANITIZED_LENGTH) where
-      // a hash suffix follows. For short paths, require exact match to avoid
-      // /root/project matching /root/project-foo.
-      const isMatch =
-        dirName === prefix ||
-        (prefix.length >= MAX_SANITIZED_LENGTH &&
-          dirName.startsWith(prefix + '-'))
-      if (isMatch) {
-        seenDirs.add(dirName)
-        all.push(
-          ...(await listCandidates(
-            join(projectsDir, dirent.name),
-            doStat,
-            wtPath,
-          )),
-        )
-        break
+      for (const { path: wtPath, prefix } of indexed) {
+        const isMatch =
+          dirName === prefix ||
+          (prefix.length >= MAX_SANITIZED_LENGTH &&
+            dirName.startsWith(prefix + '-'))
+        if (isMatch) {
+          seenDirs.add(dirName)
+          // Also check worktree's local .legna/sessions/
+          const wtLocalDir = getLocalSessionsDir(wtPath)
+          if (existsSync(wtLocalDir)) {
+            all.push(...(await listCandidates(wtLocalDir, doStat, wtPath)))
+          }
+          all.push(
+            ...(await listCandidates(
+              join(projectsDir, dirent.name),
+              doStat,
+              wtPath,
+            )),
+          )
+          break
+        }
       }
     }
   }
@@ -402,24 +408,36 @@ async function gatherProjectCandidates(
 
 /**
  * Gathers candidate session files across all project directories.
+ * Scans: all local .legna/sessions/ + ~/.legna/projects/ + ~/.claude/projects/
  */
 async function gatherAllCandidates(doStat: boolean): Promise<Candidate[]> {
+  const all: Candidate[] = []
+
+  // 1. Scan ~/.legna/projects/
   const projectsDir = getProjectsDir()
-
-  let dirents: Dirent[]
   try {
-    dirents = await readdir(projectsDir, { withFileTypes: true })
-  } catch {
-    return []
-  }
+    const dirents = await readdir(projectsDir, { withFileTypes: true })
+    const perProject = await Promise.all(
+      dirents
+        .filter(d => d.isDirectory())
+        .map(d => listCandidates(join(projectsDir, d.name), doStat)),
+    )
+    all.push(...perProject.flat())
+  } catch { /* no projects dir */ }
 
-  const perProject = await Promise.all(
-    dirents
-      .filter(d => d.isDirectory())
-      .map(d => listCandidates(join(projectsDir, d.name), doStat)),
-  )
+  // 2. Scan legacy ~/.claude/projects/
+  const legacyDir = getLegacyProjectsDir()
+  try {
+    const dirents = await readdir(legacyDir, { withFileTypes: true })
+    const perProject = await Promise.all(
+      dirents
+        .filter(d => d.isDirectory())
+        .map(d => listCandidates(join(legacyDir, d.name), doStat)),
+    )
+    all.push(...perProject.flat())
+  } catch { /* no legacy dir */ }
 
-  return perProject.flat()
+  return all
 }
 
 /**

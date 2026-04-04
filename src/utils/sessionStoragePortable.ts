@@ -8,6 +8,7 @@
 
 import type { UUID } from 'crypto'
 import { open as fsOpen, readdir, realpath, stat } from 'fs/promises'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { getClaudeConfigHomeDir } from './envUtils.js'
 import { getWorktreePathsPortable } from './getWorktreePathsPortable.js'
@@ -326,6 +327,19 @@ export function getProjectsDir(): string {
   return join(getClaudeConfigHomeDir(), 'projects')
 }
 
+/** Legacy global projects dir — for fallback reads from ~/.claude/projects/ */
+export function getLegacyProjectsDir(): string {
+  const home = process.env.HOME || process.env.USERPROFILE || ''
+  return join(home, '.claude', 'projects')
+}
+
+/**
+ * Project-local sessions directory: <cwd>/.legna/sessions/
+ */
+export function getLocalSessionsDir(cwd: string): string {
+  return join(cwd, '.legna', 'sessions')
+}
+
 export function getProjectDir(projectDir: string): string {
   return join(getProjectsDir(), sanitizePath(projectDir))
 }
@@ -382,23 +396,14 @@ export async function findProjectDir(
 /**
  * Resolve a sessionId to its on-disk JSONL file path.
  *
- * When `dir` is provided: canonicalize it, look in that project's directory
- * (with findProjectDir fallback for Bun/Node hash mismatches), then fall back
- * to sibling git worktrees. `projectPath` in the result is the canonical
- * user-facing directory the file was found under.
+ * Search order (fallback chain):
+ * 1. <dir>/.legna/sessions/<uuid>.jsonl  (project-local, new)
+ * 2. ~/.legna/projects/<sanitized>/      (global legna, legacy)
+ * 3. ~/.claude/projects/<sanitized>/     (global claude, legacy)
+ * 4. git worktree siblings
  *
- * When `dir` is omitted: scan all project directories under ~/.claude/projects/.
- * `projectPath` is undefined in this case (no meaningful project path to report).
- *
- * Existence is checked by stat (operate-then-catch-ENOENT, no existsSync).
- * Zero-byte files are treated as not-found so callers continue searching past
- * a truncated copy to find a valid one in a sibling directory.
- *
- * `fileSize` is returned so callers (loadSessionBuffer) don't need to re-stat.
- *
- * Shared by getSessionInfoImpl and getSessionMessagesImpl — the caller
- * invokes its own reader (readSessionLite / loadSessionBuffer) on the
- * resolved path.
+ * When `dir` is omitted: scan local .legna/sessions/ of cwd, then all
+ * global project directories.
  */
 export async function resolveSessionFilePath(
   sessionId: string,
@@ -411,6 +416,18 @@ export async function resolveSessionFilePath(
 
   if (dir) {
     const canonical = await canonicalizePath(dir)
+
+    // 1. Project-local: <dir>/.legna/sessions/
+    const localPath = join(getLocalSessionsDir(canonical), fileName)
+    try {
+      const s = await stat(localPath)
+      if (s.size > 0)
+        return { filePath: localPath, projectPath: canonical, fileSize: s.size }
+    } catch {
+      // not found locally — keep searching
+    }
+
+    // 2. Global ~/.legna/projects/<sanitized>/
     const projectDir = await findProjectDir(canonical)
     if (projectDir) {
       const filePath = join(projectDir, fileName)
@@ -422,7 +439,21 @@ export async function resolveSessionFilePath(
         // ENOENT/EACCES — keep searching
       }
     }
-    // Worktree fallback — sessions may live under a different worktree root
+
+    // 3. Legacy ~/.claude/projects/<sanitized>/
+    const legacyProjectsDir = getLegacyProjectsDir()
+    const legacySanitized = sanitizePath(canonical)
+    const legacyDir = join(legacyProjectsDir, legacySanitized)
+    try {
+      const filePath = join(legacyDir, fileName)
+      const s = await stat(filePath)
+      if (s.size > 0)
+        return { filePath, projectPath: canonical, fileSize: s.size }
+    } catch {
+      // not in legacy either
+    }
+
+    // 4. Worktree fallback
     let worktreePaths: string[]
     try {
       worktreePaths = await getWorktreePathsPortable(canonical)
@@ -431,6 +462,14 @@ export async function resolveSessionFilePath(
     }
     for (const wt of worktreePaths) {
       if (wt === canonical) continue
+      // Check worktree's local .legna/sessions/
+      const wtLocalPath = join(getLocalSessionsDir(wt), fileName)
+      try {
+        const s = await stat(wtLocalPath)
+        if (s.size > 0)
+          return { filePath: wtLocalPath, projectPath: wt, fileSize: s.size }
+      } catch { /* keep searching */ }
+      // Check worktree's global project dir
       const wtProjectDir = await findProjectDir(wt)
       if (!wtProjectDir) continue
       const filePath = join(wtProjectDir, fileName)
@@ -444,24 +483,47 @@ export async function resolveSessionFilePath(
     return undefined
   }
 
-  // No dir — scan all project directories
-  const projectsDir = getProjectsDir()
-  let dirents: string[]
-  try {
-    dirents = await readdir(projectsDir)
-  } catch {
-    return undefined
-  }
-  for (const name of dirents) {
-    const filePath = join(projectsDir, name, fileName)
+  // No dir — scan all sources
+  // 1. Try current working directory's .legna/sessions/ if available
+  const cwd = process.cwd()
+  const localDir = getLocalSessionsDir(cwd)
+  if (existsSync(localDir)) {
+    const localPath = join(localDir, fileName)
     try {
-      const s = await stat(filePath)
+      const s = await stat(localPath)
       if (s.size > 0)
-        return { filePath, projectPath: undefined, fileSize: s.size }
-    } catch {
-      // ENOENT/ENOTDIR — not in this project, keep scanning
-    }
+        return { filePath: localPath, projectPath: cwd, fileSize: s.size }
+    } catch { /* not found */ }
   }
+
+  // 2. Scan ~/.legna/projects/
+  const projectsDir = getProjectsDir()
+  try {
+    const dirents = await readdir(projectsDir)
+    for (const name of dirents) {
+      const filePath = join(projectsDir, name, fileName)
+      try {
+        const s = await stat(filePath)
+        if (s.size > 0)
+          return { filePath, projectPath: undefined, fileSize: s.size }
+      } catch { /* keep scanning */ }
+    }
+  } catch { /* no projects dir */ }
+
+  // 3. Scan legacy ~/.claude/projects/
+  const legacyDir = getLegacyProjectsDir()
+  try {
+    const dirents = await readdir(legacyDir)
+    for (const name of dirents) {
+      const filePath = join(legacyDir, name, fileName)
+      try {
+        const s = await stat(filePath)
+        if (s.size > 0)
+          return { filePath, projectPath: undefined, fileSize: s.size }
+      } catch { /* keep scanning */ }
+    }
+  } catch { /* no legacy dir */ }
+
   return undefined
 }
 

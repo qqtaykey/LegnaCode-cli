@@ -895,7 +895,16 @@ export const getMemoryFiles = memoize(
           )),
         )
 
-        // Try reading .claude/LEGNA.md (Project)
+        // Try reading .legna/LEGNA.md (Project), fallback to .claude/LEGNA.md
+        const dotLegnaPath = join(dir, '.legna', 'LEGNA.md')
+        result.push(
+          ...(await processMemoryFile(
+            dotLegnaPath,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         const dotClaudePath = join(dir, '.claude', 'LEGNA.md')
         result.push(
           ...(await processMemoryFile(
@@ -906,7 +915,17 @@ export const getMemoryFiles = memoize(
           )),
         )
 
-        // Try reading .claude/rules/*.md files (Project)
+        // Try reading .legna/rules/*.md files (Project), fallback to .claude/rules/
+        const legnaRulesDir = join(dir, '.legna', 'rules')
+        result.push(
+          ...(await processMdRules({
+            rulesDir: legnaRulesDir,
+            type: 'Project',
+            processedPaths,
+            includeExternal,
+            conditionalRule: false,
+          })),
+        )
         const rulesDir = join(dir, '.claude', 'rules')
         result.push(
           ...(await processMdRules({
@@ -951,7 +970,16 @@ export const getMemoryFiles = memoize(
           )),
         )
 
-        // Try reading .claude/LEGNA.md from the additional directory
+        // Try reading .legna/LEGNA.md from the additional directory, fallback to .claude/
+        const dotLegnaPathAdd = join(dir, '.legna', 'LEGNA.md')
+        result.push(
+          ...(await processMemoryFile(
+            dotLegnaPathAdd,
+            'Project',
+            processedPaths,
+            includeExternal,
+          )),
+        )
         const dotClaudePath = join(dir, '.claude', 'LEGNA.md')
         result.push(
           ...(await processMemoryFile(
@@ -962,7 +990,17 @@ export const getMemoryFiles = memoize(
           )),
         )
 
-        // Try reading .claude/rules/*.md files from the additional directory
+        // Try reading .legna/rules/*.md files from the additional directory, fallback to .claude/
+        const legnaRulesDirAdd = join(dir, '.legna', 'rules')
+        result.push(
+          ...(await processMdRules({
+            rulesDir: legnaRulesDirAdd,
+            type: 'Project',
+            processedPaths,
+            includeExternal,
+            conditionalRule: false,
+          })),
+        )
         const rulesDir = join(dir, '.claude', 'rules')
         result.push(
           ...(await processMdRules({
@@ -1264,6 +1302,15 @@ export async function getMemoryFilesForNestedDirectory(
         false,
       )),
     )
+    const dotLegnaPath = join(dir, '.legna', 'LEGNA.md')
+    result.push(
+      ...(await processMemoryFile(
+        dotLegnaPath,
+        'Project',
+        processedPaths,
+        false,
+      )),
+    )
     const dotClaudePath = join(dir, '.claude', 'LEGNA.md')
     result.push(
       ...(await processMemoryFile(
@@ -1283,11 +1330,21 @@ export async function getMemoryFilesForNestedDirectory(
     )
   }
 
+  const legnaRulesDir = join(dir, '.legna', 'rules')
   const rulesDir = join(dir, '.claude', 'rules')
 
-  // Process project unconditional .claude/rules/*.md files, which were not eagerly loaded
+  // Process project unconditional .legna/rules/*.md and .claude/rules/*.md files, which were not eagerly loaded
   // Use a separate processedPaths set to avoid marking conditional rule files as processed
   const unconditionalProcessedPaths = new Set(processedPaths)
+  result.push(
+    ...(await processMdRules({
+      rulesDir: legnaRulesDir,
+      type: 'Project',
+      processedPaths: unconditionalProcessedPaths,
+      includeExternal: false,
+      conditionalRule: false,
+    })),
+  )
   result.push(
     ...(await processMdRules({
       rulesDir,
@@ -1298,7 +1355,16 @@ export async function getMemoryFilesForNestedDirectory(
     })),
   )
 
-  // Process project conditional .claude/rules/*.md files
+  // Process project conditional .legna/rules/*.md and .claude/rules/*.md files
+  result.push(
+    ...(await processConditionedMdRules(
+      targetPath,
+      legnaRulesDir,
+      'Project',
+      processedPaths,
+      false,
+    )),
+  )
   result.push(
     ...(await processConditionedMdRules(
       targetPath,
@@ -1331,14 +1397,28 @@ export async function getConditionalRulesForCwdLevelDirectory(
   targetPath: string,
   processedPaths: Set<string>,
 ): Promise<MemoryFileInfo[]> {
-  const rulesDir = join(dir, '.claude', 'rules')
-  return processConditionedMdRules(
-    targetPath,
-    rulesDir,
-    'Project',
-    processedPaths,
-    false,
+  const result: MemoryFileInfo[] = []
+  const legnaRulesDir = join(dir, '.legna', 'rules')
+  result.push(
+    ...(await processConditionedMdRules(
+      targetPath,
+      legnaRulesDir,
+      'Project',
+      processedPaths,
+      false,
+    )),
   )
+  const rulesDir = join(dir, '.claude', 'rules')
+  result.push(
+    ...(await processConditionedMdRules(
+      targetPath,
+      rulesDir,
+      'Project',
+      processedPaths,
+      false,
+    )),
+  )
+  return result
 }
 
 /**

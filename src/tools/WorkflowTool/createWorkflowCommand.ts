@@ -26,7 +26,7 @@ function parseFrontmatter(content: string): Record<string, string> {
  * Scan .claude/workflows/ for .md files and return a Command for each.
  */
 export async function getWorkflowCommands(cwd: string): Promise<Command[]> {
-  const workflowDir = path.join(cwd, '.claude', 'workflows')
+  const workflowDir = path.join(cwd, '.legna', 'workflows')
 
   let entries: string[]
   try {

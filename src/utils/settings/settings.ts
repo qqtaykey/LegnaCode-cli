@@ -300,9 +300,9 @@ export function getRelativeSettingsFilePathForSource(
 ): string {
   switch (source) {
     case 'projectSettings':
-      return join('.claude', 'settings.json')
+      return join('.legna', 'settings.json')
     case 'localSettings':
-      return join('.claude', 'settings.local.json')
+      return join('.legna', 'settings.local.json')
   }
 }
 
