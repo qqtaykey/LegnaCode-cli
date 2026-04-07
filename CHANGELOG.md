@@ -2,6 +2,30 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.3.4] - 2026-04-07
+
+### New Features
+
+- **OML Superpowers 工程纪律** — 集成 obra/superpowers 核心技能，强制 AI 遵循严格的软件工程流程
+  - `/verify` — 完成前验证纪律：没有新鲜证据不能声称完成
+  - `/tdd` — TDD 强制执行：RED-GREEN-REFACTOR，先写测试再写代码
+  - `/debug` — 4 阶段系统化调试，3 次失败质疑架构
+  - `/brainstorm` — 苏格拉底式设计：硬门控，设计未批准前禁止实现
+  - `/write-plan` — 将设计拆成 2-5 分钟的小任务，零占位符
+  - `/sdd` — 子代理驱动开发：实现→spec 审查→质量审查三阶段
+  - `/exec-plan` — 加载计划文件逐任务执行
+  - `/dispatch` — 并行子代理派发
+  - `/code-review` — 派发 reviewer 子代理
+  - `/worktree` — Git worktree 隔离开发
+  - `/finish-branch` — 分支收尾（合并/PR/保留/丢弃）
+- **SessionStart 技能引导** — 会话启动时自动注入 OML 技能引导 prompt（"1% 规则"）
+- OML plugin 版本升级到 1.1.0，总计 35 个内置 skill
+
+### Architecture
+
+- `src/plugins/bundled/oml/superpowers.ts` — 11 个工程纪律 skill + SessionStart guidance
+- `src/plugins/bundled/oml/definition.ts` — 追加 superpowers skills + SessionStart hook
+
 ## [1.3.3] - 2026-04-07
 
 ### New Features

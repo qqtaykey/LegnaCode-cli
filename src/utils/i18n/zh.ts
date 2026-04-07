@@ -250,4 +250,28 @@ export const ZH_DICT: Record<string, string> = {
     '/mobile 从手机上的 LegnaCode 应用使用 LegnaCode',
   'Set CLAUDE_CODE_USE_POWERSHELL_TOOL=1 to enable the PowerShell tool (preview)':
     '设置 CLAUDE_CODE_USE_POWERSHELL_TOOL=1 启用 PowerShell 工具（预览）',
+
+  // ── OML Superpowers Skills ──
+  '[OML] 完成前验证 — 没有新鲜证据不能声称完成':
+    '[OML] 完成前验证 — 没有新鲜证据不能声称完成',
+  '[OML] TDD 强制执行 — RED-GREEN-REFACTOR，先写测试再写代码':
+    '[OML] TDD 强制执行 — RED-GREEN-REFACTOR，先写测试再写代码',
+  '[OML] 系统化调试 — 4 阶段根因分析，3 次失败质疑架构':
+    '[OML] 系统化调试 — 4 阶段根因分析，3 次失败质疑架构',
+  '[OML] 苏格拉底式设计 — 硬门控，设计未批准前禁止实现':
+    '[OML] 苏格拉底式设计 — 硬门控，设计未批准前禁止实现',
+  '[OML] 写实现计划 — 将设计拆成 2-5 分钟的小任务':
+    '[OML] 写实现计划 — 将设计拆成 2-5 分钟的小任务',
+  '[OML] 子代理驱动开发 — 实现→spec审查→质量审查三阶段':
+    '[OML] 子代理驱动开发 — 实现→spec审查→质量审查三阶段',
+  '[OML] 执行计划 — 加载计划文件，逐任务执行并验证':
+    '[OML] 执行计划 — 加载计划文件，逐任务执行并验证',
+  '[OML] 并行子代理 — 2+ 独立任务同时派发':
+    '[OML] 并行子代理 — 2+ 独立任务同时派发',
+  '[OML] 请求代码审查 — 派发 reviewer 子代理检查代码质量':
+    '[OML] 请求代码审查 — 派发 reviewer 子代理检查代码质量',
+  '[OML] Git worktree — 创建隔离工作区，自动 setup + 基线测试':
+    '[OML] Git worktree — 创建隔离工作区，自动 setup + 基线测试',
+  '[OML] 分支收尾 — 验证测试→合并/PR/保留/丢弃':
+    '[OML] 分支收尾 — 验证测试→合并/PR/保留/丢弃',
 }
