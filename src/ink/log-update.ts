@@ -62,6 +62,18 @@ export class LogUpdate {
     this.state.previousOutput = ''
   }
 
+  /**
+   * Alt-screen full redraw: erase screen + cursor home + render all content.
+   * Unlike fullResetSequence_CAUSES_FLICKER, this does NOT use clearTerminal
+   * (which has Windows-specific legacy paths and scrollback handling).
+   * Alt-screen has no scrollback, so a simple CSI 2J + CSI H is sufficient.
+   */
+  private altScreenFullRedraw(frame: Frame, stylePool: StylePool): Diff {
+    const screen = new VirtualScreen({ x: 0, y: 0 }, frame.viewport.width)
+    renderFrame(screen, frame, stylePool)
+    return [{ type: 'stdout', content: '\x1b[2J\x1b[H' }, ...screen.diff]
+  }
+
   private renderFullFrame(frame: Frame): Diff {
     const { screen } = frame
     const lines: string[] = []
@@ -143,6 +155,9 @@ export class LogUpdate {
       next.viewport.height < prev.viewport.height ||
       (prev.viewport.width !== 0 && next.viewport.width !== prev.viewport.width)
     ) {
+      if (altScreen) {
+        return this.altScreenFullRedraw(next, stylePool)
+      }
       return fullResetSequence_CAUSES_FLICKER(next, 'resize', stylePool)
     }
 
@@ -237,6 +252,9 @@ export class LogUpdate {
         }
       })
       if (scrollbackChangeY >= 0) {
+        if (altScreen) {
+          return this.altScreenFullRedraw(next, stylePool)
+        }
         const prevLine = readLine(prev.screen, scrollbackChangeY)
         const nextLine = readLine(next.screen, scrollbackChangeY)
         return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool, {
@@ -263,6 +281,9 @@ export class LogUpdate {
       // If we need to clear more lines than fit in the viewport, some are in
       // scrollback, so we need a full reset.
       if (linesToClear > prev.viewport.height) {
+        if (altScreen) {
+          return this.altScreenFullRedraw(next, this.options.stylePool)
+        }
         return fullResetSequence_CAUSES_FLICKER(
           next,
           'offscreen',
@@ -380,6 +401,9 @@ export class LogUpdate {
       }
     })
     if (needsFullReset) {
+      if (altScreen) {
+        return this.altScreenFullRedraw(next, stylePool)
+      }
       return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool, {
         triggerY: resetTriggerY,
         prevLine: readLine(prev.screen, resetTriggerY),

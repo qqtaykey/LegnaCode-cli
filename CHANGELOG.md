@@ -2,6 +2,20 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.3.5] - 2026-04-07
+
+### Bug Fixes
+
+- **SessionStart hook error** — OML 的 SessionStart hook 使用了 `type: 'prompt'`，但 SessionStart 阶段没有 `toolUseContext`（LLM 调用上下文），导致必崩。移除 SessionStart hook，skill guidance 通过 skill description 暴露
+- **Windows alt-screen 渲染闪烁** — alt-screen 模式下 `fullResetSequence_CAUSES_FLICKER` 仍会触发（viewport 变化、scrollback 检测等），导致整屏清除+重绘闪烁。新增 `altScreenFullRedraw()` 方法，alt-screen 下用简单的 `CSI 2J + CSI H`（erase screen + cursor home）替代 `clearTerminal` 的 Windows legacy 路径
+- **Windows drainStdin** — 之前在 Windows 上完全跳过 stdin 排空，鼠标事件残留导致输入框错乱。改为通过 toggle raw mode 刷新缓冲的输入事件
+
+### Architecture
+
+- `src/ink/log-update.ts` — 5 个 `fullResetSequence_CAUSES_FLICKER` 调用点加 `altScreen` 检查，新增 `altScreenFullRedraw()` 方法
+- `src/ink/ink.tsx` — Windows `drainStdin` 替代方案（toggle raw mode）
+- `src/plugins/bundled/oml/definition.ts` — 移除 SessionStart hook，OML 升级到 1.2.0
+
 ## [1.3.4] - 2026-04-07
 
 ### New Features

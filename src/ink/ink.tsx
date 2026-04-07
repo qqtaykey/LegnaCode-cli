@@ -1674,7 +1674,17 @@ export function drainStdin(stdin: NodeJS.ReadStream = process.stdin): void {
   }
   // No /dev/tty on Windows; CONIN$ doesn't support O_NONBLOCK semantics.
   // Windows Terminal also doesn't buffer mouse reports the same way.
-  if (process.platform === 'win32') return;
+  // Flush pending input by toggling raw mode to discard buffered events.
+  if (process.platform === 'win32') {
+    try {
+      const tty = stdin as NodeJS.ReadStream & { isRaw?: boolean; setRawMode?: (raw: boolean) => void }
+      if (tty.isRaw && tty.setRawMode) {
+        tty.setRawMode(false)
+        tty.setRawMode(true)
+      }
+    } catch { /* stream may be destroyed */ }
+    return
+  }
   // termios is per-device: flip stdin to raw so canonical-mode line
   // buffering doesn't hide partial input from the non-blocking read.
   // Restored in the finally block.
