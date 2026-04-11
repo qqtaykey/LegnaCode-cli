@@ -4,6 +4,41 @@ import { t, tf } from '../utils/i18n.js'
 import type { BackgroundTaskState } from './types.js'
 
 /**
+ * For a single local_agent task with progress, produce a compact activity
+ * summary like "Reading src/foo.ts (3 tools, ~2.1k tokens)".
+ */
+function getActivitySummary(task: BackgroundTaskState): string | null {
+  if (task.type !== 'local_agent') return null
+  const progress = task.progress
+  if (!progress) return null
+
+  const tools = progress.toolUseCount ?? 0
+  const tokens = progress.tokenCount ?? 0
+
+  // Build activity prefix from last tool use
+  let activity = ''
+  const last = progress.recentActivities?.at(-1)
+  if (last?.activityDescription) {
+    activity = last.activityDescription
+  } else if (last) {
+    activity = last.toolName
+  }
+
+  // Build stats suffix
+  const tokensK = tokens > 0 ? `, ~${(tokens / 1000).toFixed(1)}k` : ''
+  const stats = tools > 0 ? ` (${tools} tools${tokensK})` : ''
+
+  if (activity) {
+    // Truncate long activity descriptions
+    const maxLen = 40
+    const truncated = activity.length > maxLen ? activity.slice(0, maxLen) + '...' : activity
+    return `${truncated}${stats}`
+  }
+
+  return tools > 0 ? `${tools} tools${tokensK}` : null
+}
+
+/**
  * Produces the compact footer-pill label for a set of background tasks.
  * Used by both the footer pill and the turn-duration transcript line so the
  * two surfaces agree on terminology.
@@ -35,8 +70,14 @@ export function getPillLabel(tasks: BackgroundTaskState[]): string {
         ).size
         return teamCount === 1 ? t('1 team') : tf('{0} teams', String(teamCount))
       }
-      case 'local_agent':
-        return n === 1 ? t('1 local agent') : tf('{0} local agents', String(n))
+      case 'local_agent': {
+        // Single agent: show live activity summary if available
+        if (n === 1) {
+          const summary = getActivitySummary(tasks[0]!)
+          return summary ? `bg: ${summary}` : t('1 local agent')
+        }
+        return tf('{0} local agents', String(n))
+      }
       case 'remote_agent': {
         const first = tasks[0]!
         // Per design mockup: ◇ open diamond while running/needs-input,

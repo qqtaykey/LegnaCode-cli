@@ -2109,7 +2109,7 @@ export function REPL({
       // Elicitation dialog handles its own Escape, and closing it shouldn't affect any loading state.
       return;
     }
-    logForDebugging(`[onCancel] focusedInputDialog=${focusedInputDialog} streamMode=${streamMode}`);
+    logForDebugging(`[onCancel] focusedInputDialog=${focusedInputDialog} streamMode=${streamMode} stack=${new Error().stack?.split('\n').slice(1, 4).map(s => s.trim()).join(' <- ')}`);
 
     // Pause proactive mode so the user gets control back.
     // It will resume when they submit their next input (see onSubmit).
@@ -4099,7 +4099,10 @@ export function REPL({
   // Abort the current operation when a 'now' priority message arrives
   // (e.g. from a chat UI client via UDS).
   useEffect(() => {
-    if (queuedCommands.some(cmd => cmd.priority === 'now')) {
+    const nowCmd = queuedCommands.find(cmd => cmd.priority === 'now');
+    if (nowCmd) {
+      const summary = nowCmd.value?.slice(0, 80) || 'priority-now command';
+      logForDebugging(`[priority-now] Interrupting current task for: ${summary}`);
       abortControllerRef.current?.abort('interrupt');
     }
   }, [queuedCommands]);

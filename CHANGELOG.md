@@ -2,6 +2,26 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.3.7] - 2026-04-09
+
+### Bug Fixes
+
+- **Resume 会话检测** — `legna resume` 无法发现 v1.3.0+ 写入 `<project>/.legna/sessions/` 的会话。`getStatOnlyLogsForWorktrees()` 只扫描全局 `~/.legna/projects/`，现在同时扫描项目本地 sessions 目录，与 `fetchLogs()` 行为一致
+- **Interrupted 诊断日志** — `onCancel()` 和 `query.ts` 中断点新增 abort reason + 调用栈日志，`--verbose` 模式下可追踪中断来源
+
+### Enhancements
+
+- **Priority-now 中断可见性** — 排队命令中断当前任务时记录命令摘要到 debug 日志，不再静默 abort
+- **后台任务状态可见性** — footer pill 单个后台 agent 显示实时活动摘要（最近工具 + token 统计），任务完成通知包含 progress 统计
+
+### Architecture
+
+- `src/utils/sessionStorage.ts` — `getStatOnlyLogsForWorktrees()` Path A/B 均加入 `.legna/sessions/` 扫描
+- `src/query.ts` — 两个 `createUserInterruptionMessage` 调用点加 abort reason 日志
+- `src/screens/REPL.tsx` — `onCancel()` 调用栈日志，priority-now useEffect 记录命令摘要
+- `src/tasks/pillLabel.ts` — 单 agent 任务显示 `getActivitySummary()` 实时活动
+- `src/tasks/LocalMainSessionTask.ts` — `completeMainSessionTask` 捕获 progress，通知包含统计
+
 ## [1.3.6] - 2026-04-09
 
 ### Bug Fixes

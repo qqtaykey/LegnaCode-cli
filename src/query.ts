@@ -1046,6 +1046,8 @@ async function* queryLoop(
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
+        const abortReason = toolUseContext.abortController.signal.reason ?? 'unknown'
+        logForDebugging(`[Interrupted] abort reason: ${abortReason}, phase: streaming`)
         yield createUserInterruptionMessage({
           toolUse: false,
         })
@@ -1501,6 +1503,8 @@ async function* queryLoop(
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
+        const abortReason = toolUseContext.abortController.signal.reason ?? 'unknown'
+        logForDebugging(`[Interrupted] abort reason: ${abortReason}, phase: tool_execution`)
         yield createUserInterruptionMessage({
           toolUse: true,
         })

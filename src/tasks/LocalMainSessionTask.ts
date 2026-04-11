@@ -172,6 +172,7 @@ export function completeMainSessionTask(
 ): void {
   let wasBackgrounded = true
   let toolUseId: string | undefined
+  let progressInfo: { toolUseCount?: number; tokenCount?: number } | undefined
 
   updateTaskState<LocalMainSessionTaskState>(taskId, setAppState, task => {
     if (task.status !== 'running') {
@@ -181,6 +182,10 @@ export function completeMainSessionTask(
     // Track if task was backgrounded (for notification decision)
     wasBackgrounded = task.isBackgrounded ?? true
     toolUseId = task.toolUseId
+    // Capture progress before clearing
+    progressInfo = task.progress
+      ? { toolUseCount: task.progress.toolUseCount, tokenCount: task.progress.tokenCount }
+      : undefined
 
     task.unregisterCleanup?.()
 
@@ -203,6 +208,7 @@ export function completeMainSessionTask(
       success ? 'completed' : 'failed',
       setAppState,
       toolUseId,
+      progressInfo,
     )
   } else {
     // Foregrounded: no XML notification (TUI user is watching), but SDK
@@ -227,6 +233,7 @@ function enqueueMainSessionNotification(
   status: 'completed' | 'failed',
   setAppState: SetAppState,
   toolUseId?: string,
+  progressInfo?: { toolUseCount?: number; tokenCount?: number },
 ): void {
   // Atomically check and set notified flag to prevent duplicate notifications.
   let shouldEnqueue = false
@@ -247,6 +254,15 @@ function enqueueMainSessionNotification(
       ? `Background session "${description}" completed`
       : `Background session "${description}" failed`
 
+  // Build progress stats suffix for richer notification
+  let progressSuffix = ''
+  if (progressInfo) {
+    const tools = progressInfo.toolUseCount ?? 0
+    const tokens = progressInfo.tokenCount ?? 0
+    const tokensK = tokens > 0 ? ` ~${(tokens / 1000).toFixed(1)}k tokens` : ''
+    progressSuffix = ` (${tools} tools${tokensK})`
+  }
+
   const toolUseIdLine = toolUseId
     ? `\n<${TOOL_USE_ID_TAG}>${toolUseId}</${TOOL_USE_ID_TAG}>`
     : ''
@@ -256,7 +272,7 @@ function enqueueMainSessionNotification(
 <${TASK_ID_TAG}>${taskId}</${TASK_ID_TAG}>${toolUseIdLine}
 <${OUTPUT_FILE_TAG}>${outputPath}</${OUTPUT_FILE_TAG}>
 <${STATUS_TAG}>${status}</${STATUS_TAG}>
-<${SUMMARY_TAG}>${summary}</${SUMMARY_TAG}>
+<${SUMMARY_TAG}>${summary}${progressSuffix}</${SUMMARY_TAG}>
 </${TASK_NOTIFICATION_TAG}>`
 
   enqueuePendingNotification({ value: message, mode: 'task-notification' })

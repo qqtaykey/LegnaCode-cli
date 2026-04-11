@@ -4142,8 +4142,13 @@ async function getStatOnlyLogsForWorktrees(
 
   if (worktreePaths.length <= 1) {
     const cwd = getOriginalCwd()
+    const localDir = join(cwd, '.legna', 'sessions')
     const projectDir = getProjectDir(cwd)
-    return getSessionFilesLite(projectDir, undefined, cwd)
+    const [localLogs, globalLogs] = await Promise.all([
+      getSessionFilesLite(localDir, undefined, cwd).catch(() => [] as LogOption[]),
+      getSessionFilesLite(projectDir, undefined, cwd).catch(() => [] as LogOption[]),
+    ])
+    return deduplicateLogsBySessionId([...localLogs, ...globalLogs])
   }
 
   // On Windows, drive letter case can differ between git worktree list
@@ -4193,6 +4198,14 @@ async function getStatOnlyLogsForWorktrees(
             undefined,
             wtPath,
           )),
+        )
+        // Also scan project-local .legna/sessions/ for this worktree
+        allLogs.push(
+          ...(await getSessionFilesLite(
+            join(wtPath, '.legna', 'sessions'),
+            undefined,
+            wtPath,
+          ).catch(() => [] as LogOption[])),
         )
         break
       }
