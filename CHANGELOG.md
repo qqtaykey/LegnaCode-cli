@@ -2,6 +2,23 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.2] - 2026-04-11
+
+### Features
+
+- **verbose 默认开启** — 用户默认看到完整的工具执行过程和进度信息
+- **Token/Timer 即时显示** — 去掉 30 秒延迟，token 计数和耗时从第 1 秒就显示
+- **Autocompact 状态可见** — 压缩对话时显示 "Compacting conversation context..." 系统消息
+- **中断原因可见** — abort 时显示中断原因（streaming 和 tool_execution 两个阶段）
+- **Output truncated 重试提示** — max output tokens recovery 时显示重试进度
+- **工具执行日志** — StreamingToolExecutor 输出当前工具名和队列深度
+- **Microcompact/Snip 日志** — 压缩操作添加 debug 日志
+- **ForkedAgent 启动日志** — 子 agent 启动时输出标签和 ID
+
+### Bug Fixes
+
+- **Apple Terminal 通知逻辑修复** — bell 未禁用时才发 bell（之前逻辑反了）
+
 ## [1.4.0] - 2026-04-11
 
 ### Features
