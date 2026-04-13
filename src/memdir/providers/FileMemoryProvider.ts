@@ -61,9 +61,9 @@ export class FileMemoryProvider extends MemoryProvider {
   }
 
   systemPromptBlock(): string {
-    // Use layered stack wake-up (L0+L1) instead of full MEMORY.md
+    // Budget-aware wake-up with L0/L1 degradation
     if (this.stack) {
-      const result = this.stack.wakeUp(this.projectSlug)
+      const result = this.stack.wakeUp(this.projectSlug, 800)
       if (result.text) {
         logForDebugging(`[FileMemoryProvider] Wake-up: ${result.tokenEstimate} tokens, ${result.drawerCount} drawers`)
         return result.text
@@ -73,11 +73,11 @@ export class FileMemoryProvider extends MemoryProvider {
   }
 
   async prefetch(query: string): Promise<string> {
-    // Use DrawerStore vector search (L2/L3) instead of keyword scan
+    // Budget-capped recall with L2→L1→L0 degradation (OpenViking strategy)
     if (this.store && this.stack) {
-      const drawers = this.stack.recallByQuery(query, this.projectSlug, 5)
-      if (drawers.length > 0) {
-        return this.stack.formatRecall(drawers, 'Relevant Context')
+      const items = this.stack.recallWithBudget(query, this.projectSlug, 4000)
+      if (items.length > 0) {
+        return this.stack.formatTieredRecall(items, 'Relevant Context')
       }
     }
 

@@ -4,6 +4,18 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.5] - 2026-04-13
+
+### Features
+
+- **OpenViking content tiering fusion** — Ported L0/L1/L2 three-tier content grading from OpenViking's context database:
+  - **Content Tiering** — Each drawer auto-generates L0 (one-sentence summary, ~25 words) and L1 (core overview, ~200 words) at upsert time. L2 is the full verbatim content.
+  - **Budget-aware wake-up** — `wakeUp()` now accepts a token budget (default 800) and greedily fills it with L1 content, degrading to L0 when budget is tight.
+  - **Budget-capped recall** — New `recallWithBudget()` method: L2→L1→L0 degradation strategy ensures recall never exceeds character budget.
+  - **CJK-aware token estimation** — `estimateTokens()` handles mixed CJK/Latin text.
+  - **SQLite schema migration** — Existing DrawerStore databases auto-migrate with `ALTER TABLE ADD COLUMN`.
+  - **Fixed recallByTopic()** — Now passes actual query for vector ranking instead of empty string.
+
 ## [1.4.4] - 2026-04-11
 
 ### Improvements

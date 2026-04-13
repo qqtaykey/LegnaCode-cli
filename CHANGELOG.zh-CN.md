@@ -2,6 +2,18 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.5] - 2026-04-13
+
+### Features
+
+- **OpenViking 内容分级融合** — 移植 OpenViking 上下文数据库的 L0/L1/L2 三层内容分级：
+  - **内容分级** — 每个 drawer 在 upsert 时自动生成 L0（一句话摘要，~25 词）和 L1（核心概览，~200 词），L2 为原文全文
+  - **预算感知 wake-up** — `wakeUp()` 接受 token 预算（默认 800），贪心填充 L1 内容，预算不足时降级到 L0
+  - **预算封顶召回** — 新增 `recallWithBudget()` 方法：L2→L1→L0 降级策略，确保召回不超字符预算
+  - **CJK 感知 token 估算** — `estimateTokens()` 处理中日韩混合文本
+  - **SQLite schema 自动迁移** — 旧 DrawerStore 数据库自动 `ALTER TABLE ADD COLUMN`
+  - **修复 recallByTopic()** — 传入实际查询进行向量排序，不再传空字符串
+
 ## [1.4.4] - 2026-04-11
 
 ### Improvements

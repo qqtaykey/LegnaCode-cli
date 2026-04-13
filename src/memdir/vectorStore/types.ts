@@ -25,6 +25,12 @@ export interface Drawer {
   filedAt: string
   /** Source file mtime for change detection */
   sourceMtime?: number
+  /** L0: ~25 words, one-sentence summary for quick relevance checks */
+  contentL0?: string
+  /** L1: ~200 words, core info for planning-phase decisions */
+  contentL1?: string
+  /** Pre-computed token cost of full content */
+  tokenCost?: number
 }
 
 /** Metadata filter for narrowing search scope. */

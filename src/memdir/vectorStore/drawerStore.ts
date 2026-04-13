@@ -8,6 +8,7 @@ import { createHash } from 'crypto'
 import { mkdirSync, existsSync, statSync } from 'fs'
 import { dirname } from 'path'
 import { TfidfVectorizer, cosineSimilarity } from './tfidfVectorizer.js'
+import { generateL0, generateL1, estimateTokens } from './contentTiering.js'
 import type {
   Drawer, SearchResult, SearchOptions, WalEntry, StoreStats, MetadataFilter,
 } from './types.js'
@@ -49,9 +50,22 @@ export class DrawerStore {
         importance REAL DEFAULT 0.5,
         added_by TEXT DEFAULT 'system',
         filed_at TEXT NOT NULL,
-        source_mtime REAL DEFAULT 0
+        source_mtime REAL DEFAULT 0,
+        content_l0 TEXT DEFAULT '',
+        content_l1 TEXT DEFAULT '',
+        token_cost INTEGER DEFAULT 0
       )
     `)
+    // Migrate old schema: add new columns if missing
+    try {
+      this.db.exec('ALTER TABLE drawers ADD COLUMN content_l0 TEXT DEFAULT ""')
+    } catch { /* column already exists */ }
+    try {
+      this.db.exec('ALTER TABLE drawers ADD COLUMN content_l1 TEXT DEFAULT ""')
+    } catch { /* column already exists */ }
+    try {
+      this.db.exec('ALTER TABLE drawers ADD COLUMN token_cost INTEGER DEFAULT 0')
+    } catch { /* column already exists */ }
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_drawers_wing ON drawers(wing)
     `)
@@ -89,17 +103,20 @@ export class DrawerStore {
       .run('idf_model', JSON.stringify(this.vectorizer.serialize()))
   }
 
-  /** Upsert a drawer. Idempotent — same ID overwrites. */
+  /** Upsert a drawer. Idempotent — same ID overwrites. Auto-generates L0/L1 tiers. */
   upsert(drawer: Drawer, agent = 'system'): void {
+    const l0 = drawer.contentL0 || generateL0(drawer.content)
+    const l1 = drawer.contentL1 || generateL1(drawer.content)
+    const tc = drawer.tokenCost || estimateTokens(drawer.content)
     this.db.query(`
       INSERT OR REPLACE INTO drawers
-        (id, content, wing, room, source_file, chunk_index, importance, added_by, filed_at, source_mtime)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, content, wing, room, source_file, chunk_index, importance, added_by, filed_at, source_mtime, content_l0, content_l1, token_cost)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       drawer.id, drawer.content, drawer.wing, drawer.room,
       drawer.sourceFile ?? '', drawer.chunkIndex ?? 0,
       drawer.importance, drawer.addedBy, drawer.filedAt,
-      drawer.sourceMtime ?? 0,
+      drawer.sourceMtime ?? 0, l0, l1, tc,
     )
     // WAL
     this.db.query('INSERT INTO wal (operation, drawer_id, timestamp, agent) VALUES (?, ?, ?, ?)')
@@ -230,6 +247,9 @@ export class DrawerStore {
       addedBy: row.added_by || 'system',
       filedAt: row.filed_at,
       sourceMtime: row.source_mtime || undefined,
+      contentL0: row.content_l0 || undefined,
+      contentL1: row.content_l1 || undefined,
+      tokenCost: row.token_cost || undefined,
     }
   }
 }
