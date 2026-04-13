@@ -1,84 +1,128 @@
+<div align="center">
+
 # LegnaCode CLI
 
-🌐 [中文文档](./README.zh-CN.md)
+**An AI-powered terminal programming assistant, supercharged.**
 
-<img width="1256" height="416" alt="image" src="https://github.com/user-attachments/assets/5e4717e6-3404-4901-9f5c-1c6462fb1c1a" />
-<img width="1072" height="874" alt="image" src="https://github.com/user-attachments/assets/819c39e8-9db6-4d8d-b911-13600c525422" />
+[![npm version](https://img.shields.io/npm/v/@legna-lnc/legnacode?color=blue&label=npm)](https://www.npmjs.com/package/@legna-lnc/legnacode)
+[![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
+[![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
+[![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
 
-LegnaCode is an intelligent terminal programming assistant powered by Anthropic Claude. It lets you collaborate with AI directly from the command line to accomplish software engineering tasks — editing files, running commands, searching code, managing Git workflows, and more.
+🌐 [中文文档](./README.zh-CN.md) · 📊 [vs Claude Code](./COMPARISON.md) · 📋 [Changelog](./CHANGELOG.md)
 
-> 📊 **Detailed comparison with the original Claude Code** → [COMPARISON.md](./COMPARISON.md)
+<img width="1256" height="416" alt="LegnaCode banner" src="https://github.com/user-attachments/assets/5e4717e6-3404-4901-9f5c-1c6462fb1c1a" />
+
+</div>
+
+---
+
+LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/claude-code) with deep enhancements — fully compatible with the original, while adding multimodal tools, smarter memory, better UX, and more.
+
+### Highlights
+
+🧠 **88% less memory tokens** — 4-layer memory stack with vector search replaces flat MEMORY.md injection\
+🎨 **6 multimodal tools** — Image, video, speech, music, vision, web search (MiniMax models)\
+⚡ **Instant feedback** — Token counter from second 1, status in spinner line, no silent operations\
+🔌 **Pluggable memory** — DrawerStore (SQLite + TF-IDF), temporal knowledge graph, WAL audit\
+🤖 **Smarter agents** — RPC subprocess execution, autonomous skill detection, smart model routing
 
 ---
 
 ## Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for full details.
+| Version | Summary |
+|---------|---------|
+| **1.4.4** | Status messages → spinner line; comparison doc |
+| **1.4.3** | Mempalace memory fusion (DrawerStore + TF-IDF + 4-layer stack + knowledge graph) |
+| **1.4.2** | Progress feedback (8 silent paths fixed); verbose default on |
+| **1.4.0** | MiniMax multimodal (6 tools); RPC execution; Memory Provider; smart routing |
+| **1.3.7** | Resume detection fix; interrupted diagnostics |
 
-| Version | Date | Summary |
-|---------|------|---------|
-| [1.4.4](./CHANGELOG.md#144---2026-04-11) | 2026-04-11 | Status messages now display as spinner lines (no longer pollute the conversation); added feature comparison doc |
-| [1.4.3](./CHANGELOG.md#143---2026-04-11) | 2026-04-11 | Mempalace memory architecture (DrawerStore + TF-IDF vector search + 4-layer memory stack + temporal knowledge graph); ~88% token savings |
-| [1.4.2](./CHANGELOG.md#142---2026-04-11) | 2026-04-11 | Progress feedback enhancements (eliminated 8 silent code paths); verbose enabled by default; instant Token/Timer display; visible interruption reasons |
-| [1.4.0](./CHANGELOG.md#140---2026-04-11) | 2026-04-11 | Deep native MiniMax compatibility (6 multimodal tools); RPC subprocess tool execution; Memory Provider plugin system; smart model routing; autonomous skill detection; context compression enhancements; cross-session memory search |
-| [1.3.7](./CHANGELOG.md#137---2026-04-09) | 2026-04-09 | Resume session detection fix; Interrupted diagnostic logging; background task status visibility improvements |
-| [1.3.6](./CHANGELOG.md#136---2026-04-09) | 2026-04-09 | Fixed Windows path separator causing false "File has been unexpectedly modified" errors in the Edit tool |
-| [1.3.5](./CHANGELOG.md#135---2026-04-07) | 2026-04-07 | Fixed SessionStart hook errors; deep fix for Windows alt-screen rendering (eliminated fullReset flicker) |
-| [1.3.4](./CHANGELOG.md#134---2026-04-07) | 2026-04-07 | OML Superpowers engineering discipline (11 skills: /verify /tdd /debug /brainstorm etc.); SessionStart skill guidance |
-| [1.3.3](./CHANGELOG.md#133---2026-04-07) | 2026-04-07 | Built-in OML smart orchestration layer (magic keywords + 19 agent skills); Windows Terminal fullscreen fix |
-| [1.3.2](./CHANGELOG.md#132---2026-04-07) | 2026-04-07 | Disabled History Snip; fixed Windows Terminal streaming text rendering |
-| [1.3.1](./CHANGELOG.md#131---2026-04-06) | 2026-04-06 | Fixed 1M model being snipped prematurely; snip threshold now adapts to context window size |
-| [1.3.0](./CHANGELOG.md#130---2026-04-04) | 2026-04-04 | Project-local storage: sessions/skills/memory/rules moved to `<project>/.legna/`; global migration `~/.claude/` → `~/.legna/`; `legna migrate` command |
-| [1.2.1](./CHANGELOG.md#121---2026-04-04) | 2026-04-04 | Model adapter layer: deep compatibility for MiMo, GLM, DeepSeek, Kimi, and MiniMax providers |
-| [1.2.0](./CHANGELOG.md#120---2026-04-03) | 2026-04-03 | Sessions grouped by project; resume with cd; migration supports session records; native Windows compilation |
-| [1.1.9](./CHANGELOG.md#119---2026-04-03) | 2026-04-03 | postinstall auto-installs platform package; fixed optionalDependencies failure on Windows/mirror registries |
-| [1.1.8](./CHANGELOG.md#118---2026-04-03) | 2026-04-03 | Bin wrapper auto-installs missing platform package; fixed Windows npm global install issues |
-| [1.1.7](./CHANGELOG.md#117---2026-04-03) | 2026-04-03 | Fully fixed Windows external module errors; cleared external list |
-| [1.1.6](./CHANGELOG.md#116---2026-04-03) | 2026-04-03 | Fixed Windows external module errors; automated cross-platform release workflow; unified version numbers |
-| [1.1.5](./CHANGELOG.md#115---2026-04-03) | 2026-04-03 | WebUI admin panel (`legna admin`); dual-directory management; config migration; npm cross-platform publishing |
-| [1.0.9](./CHANGELOG.md#109---2026-04-03) | 2026-04-03 | i18n multilingual completion; built-in styled status bar; automatic config migration |
-| [1.0.8](./CHANGELOG.md#108---2026-04-02) | 2026-04-02 | MONITOR_TOOL, WORKFLOW_SCRIPTS, HISTORY_SNIP — 3 major subsystems, 47 flags total |
-| [1.0.7](./CHANGELOG.md#107---2026-04-02) | 2026-04-02 | TERMINAL_PANEL, WEB_BROWSER_TOOL, TEMPLATES, BG_SESSIONS — 44 flags total |
-| [1.0.6](./CHANGELOG.md#106---2026-04-02) | 2026-04-02 | CACHED_MICROCOMPACT, AGENT_TRIGGERS, TREE_SITTER_BASH and 7 more features — 40 flags total |
-| [1.0.5](./CHANGELOG.md#105---2026-04-02) | 2026-04-02 | AGENT_TRIGGERS, MCP_SKILLS, REACTIVE_COMPACT, REVIEW_ARTIFACT and 6 more features — 39 flags total |
-| [1.0.4](./CHANGELOG.md#104---2026-04-02) | 2026-04-02 | ULTRAPLAN, VERIFICATION_AGENT, AUTO_THEME and 10 more features — 33 flags total |
-| [1.0.3](./CHANGELOG.md#103---2026-04-02) | 2026-04-02 | COMMIT_ATTRIBUTION, BASH_CLASSIFIER, EXTRACT_MEMORIES and 16 more features |
-| [1.0.2](./CHANGELOG.md#102---2026-04-02) | 2026-04-02 | QUICK_SEARCH, MESSAGE_ACTIONS, FORK_SUBAGENT, HISTORY_PICKER |
-| [1.0.1](./CHANGELOG.md#101---2026-04-02) | 2026-04-02 | BUDDY virtual pet, TOKEN_BUDGET, build system fixes |
-| [1.0.0](./CHANGELOG.md#100---2026-03-31) | 2026-03-31 | Initial release |
+<details>
+<summary>Older versions</summary>
+
+| Version | Summary |
+|---------|---------|
+| 1.3.6 | Windows path separator fix for Edit tool |
+| 1.3.5 | SessionStart hook fix; Windows alt-screen rendering |
+| 1.3.4 | OML Superpowers (11 skills); SessionStart guidance |
+| 1.3.3 | OML smart orchestration (19 agent skills) |
+| 1.3.2 | Disabled History Snip; Windows streaming fix |
+| 1.3.1 | 1M model snip threshold fix |
+| 1.3.0 | Project-local storage; `legna migrate` |
+| 1.2.1 | Model adapter layer (MiMo, GLM, DeepSeek, Kimi, MiniMax) |
+| 1.2.0 | Sessions grouped by project; native Windows compilation |
+| 1.1.5–1.1.9 | Windows install fixes; WebUI admin panel |
+| 1.0.0–1.0.9 | Initial release; feature flags; i18n; BUDDY pet |
+
+</details>
+
+Full details → [CHANGELOG.md](./CHANGELOG.md)
 
 ---
 
 ## Acknowledgments
 
-This project is built upon the open-source codebase of [Claude Code CLI](https://github.com/anthropics/claude-code).
-
-Claude Code is an outstanding terminal AI programming tool created by the Anthropic team. It pioneered the deep integration of large language models with command-line development workflows, providing rich capabilities including file editing, code search, shell execution, and the MCP protocol. LegnaCode stands on the shoulders of this excellent project, with customizations and brand adaptations.
-
-Thanks to the Anthropic team for open-sourcing Claude Code CLI, enabling the community to explore further possibilities on this foundation.
+Built on [Claude Code CLI](https://github.com/anthropics/claude-code) by Anthropic — the pioneering terminal AI programming tool. LegnaCode extends it with multimodal capabilities, smarter memory, and enhanced UX while maintaining full upstream compatibility. Thanks to the Anthropic team for open-sourcing this excellent foundation.
 
 ---
 
 ## Features
 
-- **Deep Native MiniMax Compatibility** — Automatically registers 6 multimodal tools (image/video/speech/music/search/vision) when using MiniMax models; `/auth-minimax` to configure API key
-- **Terminal-Native Experience** — Modern terminal UI built with React + Ink, with syntax highlighting and structured diff display
-- **45+ Built-in Tools** — File read/write, code search (Glob/Grep), shell execution, web fetching, Jupyter Notebook editing, and more
-- **RPC Subprocess Tool Execution** — AI-generated scripts call back to LegnaCode tools via Unix Domain Socket, compressing multi-step operations into a single inference
-- **Memory Provider Plugin System** — Pluggable memory backends with a built-in filesystem provider; supports external provider extensions
-- **Smart Model Routing** — Automatically routes to fast/default/strong model tiers based on prompt complexity
-- **Autonomous Skill Detection** — Detects repetitive tool call patterns and suggests saving them as reusable skills
-- **Context Compression Enhancements** — Tool output pre-pruning + budget pressure injection for more efficient long conversations
-- **Cross-Session Memory Search** — `/recall` command searches historical sessions with keyword matching + relevance ranking
-- **Multi-Layer Security** — Bash/Zsh/PowerShell command safety detection, sandboxing, and tiered permission controls
-- **Multi-Cloud AI Backends** — Supports Anthropic API, AWS Bedrock, GCP Vertex, and Azure
-- **MCP Protocol Support** — Connect external tools and data sources via Model Context Protocol
-- **Multi-Agent Collaboration** — Sub-agent spawning, team collaboration, and task orchestration
-- **Plugin & Skill System** — Extensible plugin architecture and reusable skill workflows
-- **Persistent Memory** — Cross-session context memory system
-- **Pure TS Syntax Highlighting** — Built-in highlight.js-based pure TypeScript syntax highlighting with no native module dependencies
-- **WebUI Admin Panel** — `legna admin` launches a browser-based admin panel for visual config editing, profile switching, session browsing, and data migration
-- **`legna migrate` Command** — Manually migrate `~/.claude/` data to project-local `.legna/`; supports `--global`/`--sessions`/`--dry-run`
+<table>
+<tr><td>
+
+**🎨 Multimodal** (MiniMax)
+- Image / Video / Speech generation
+- Music generation / Vision / Web search
+- Auto-orchestrated pipelines
+- `/auth-minimax` configuration
+
+</td><td>
+
+**🧠 Memory**
+- 4-layer stack (~800 tokens/turn)
+- TF-IDF vector search (<5ms)
+- Temporal knowledge graph
+- PreCompact auto-save
+
+</td></tr>
+<tr><td>
+
+**⚡ Agent**
+- RPC subprocess tool execution
+- Smart model routing
+- Autonomous skill detection
+- Cross-session `/recall` search
+
+</td><td>
+
+**🛡️ Core**
+- 45+ built-in tools
+- Multi-cloud backends
+- MCP protocol support
+- Multi-agent collaboration
+
+</td></tr>
+<tr><td>
+
+**🖥️ UX**
+- Verbose on by default
+- Token counter from second 1
+- Status in spinner line
+- Interrupt reason visible
+
+</td><td>
+
+**🔧 DevOps**
+- WebUI admin panel
+- `legna migrate` tool
+- Pure TS syntax highlighting
+- Cross-platform binaries
+
+</td></tr>
+</table>
 
 ---
 
@@ -313,8 +357,8 @@ This project follows the open-source license of the upstream Claude Code CLI. Se
 
 ---
 
-## Links
+<div align="center">
 
-- [Claude Code CLI (upstream project)](https://github.com/anthropics/claude-code)
-- [Anthropic](https://www.anthropic.com)
-- [Model Context Protocol](https://modelcontextprotocol.io)
+**[Claude Code CLI](https://github.com/anthropics/claude-code)** · **[Anthropic](https://www.anthropic.com)** · **[Model Context Protocol](https://modelcontextprotocol.io)**
+
+</div>
