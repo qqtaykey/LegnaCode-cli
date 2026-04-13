@@ -1,551 +1,553 @@
 # Changelog
 
+🌐 [中文文档](./CHANGELOG.zh-CN.md)
+
 All notable changes to LegnaCode CLI will be documented in this file.
 
 ## [1.4.4] - 2026-04-11
 
 ### Improvements
 
-- **状态提示改为 spinner 行显示** — autocompact / output truncated / interrupted 等状态信息不再以系统消息插入对话，改为在 spinner 动画行临时显示，一闪而过不污染上下文
-- **ToolUseContext 新增 setSpinnerMessage** — 通用的 spinner 文本回调，query loop 可随时更新 spinner 状态
-- **LegnaCode vs Claude Code 对比文档** — 新增 [COMPARISON.md](./COMPARISON.md)，9 大类 60+ 项逐条对比
+- **Status messages moved to spinner line** — autocompact / output truncated / interrupted status messages no longer insert system messages into the conversation; they now display temporarily on the spinner animation line, flashing briefly without polluting context
+- **ToolUseContext adds setSpinnerMessage** — generic spinner text callback allowing the query loop to update spinner status at any time
+- **LegnaCode vs Claude Code comparison doc** — added [COMPARISON.md](./COMPARISON.md) with 60+ item-by-item comparison across 9 categories
 
 ## [1.4.3] - 2026-04-11
 
 ### Features
 
-- **mempalace 记忆架构融合** — 移植 mempalace 的核心记忆系统，纯 TypeScript 实现，零外部依赖：
-  - **DrawerStore** — SQLite 持久化向量记忆存储 + WAL 审计日志，确定性 drawer ID（sha256 幂等 upsert）
-  - **TF-IDF 向量化器** — 纯 TS 实现（Porter 词干 + 余弦相似度），<10K drawer 搜索 <5ms
-  - **4 层记忆栈** — L0 identity (~100 token) + L1 top drawers (~500-800 token) 每轮加载，L2/L3 按需召回。每轮 token 从 ~8K 降到 ~800（节省 ~88%）
-  - **时序知识图谱** — SQLite 实体-关系存储，支持带有效期的三元组和时间点查询
-  - **Room 自动分类** — 6 类（facts/decisions/events/discoveries/preferences/advice）关键词评分
-  - **交换对提取器** — Q+A 配对分块 + 5 类标记评分（decisions/preferences/milestones/problems/emotional）
-  - **自动迁移** — 首次启动自动将现有 .legna/memory/*.md 文件迁移到 DrawerStore
-  - **PreCompact 记忆保存** — 压缩前自动提取高价值交换对到 DrawerStore，防止记忆丢失
+- **mempalace memory architecture integration** — ported mempalace core memory system, pure TypeScript implementation, zero external dependencies:
+  - **DrawerStore** — SQLite-persisted vector memory storage + WAL audit log, deterministic drawer ID (sha256 idempotent upsert)
+  - **TF-IDF vectorizer** — pure TS implementation (Porter stemming + cosine similarity), <10K drawer search <5ms
+  - **4-layer memory stack** — L0 identity (~100 tokens) + L1 top drawers (~500-800 tokens) loaded every turn, L2/L3 recalled on demand. Per-turn tokens reduced from ~8K to ~800 (~88% savings)
+  - **Temporal knowledge graph** — SQLite entity-relation storage, supports triples with validity periods and point-in-time queries
+  - **Room auto-classification** — 6 categories (facts/decisions/events/discoveries/preferences/advice) with keyword scoring
+  - **Exchange pair extractor** — Q+A paired chunking + 5-category tag scoring (decisions/preferences/milestones/problems/emotional)
+  - **Auto-migration** — automatically migrates existing .legna/memory/*.md files to DrawerStore on first startup
+  - **PreCompact memory save** — automatically extracts high-value exchange pairs to DrawerStore before compaction, preventing memory loss
 
 ### Architecture
 
-- 新增 `src/memdir/vectorStore/` — 完整的向量记忆系统（8 个文件）
-  - `types.ts` — Drawer、SearchResult、MetadataFilter 类型
-  - `tfidfVectorizer.ts` — TF-IDF + Porter 词干 + 余弦相似度
-  - `drawerStore.ts` — SQLite 持久化 + WAL + 向量搜索
-  - `roomDetector.ts` — 内容自动分类
-  - `layeredStack.ts` — 4 层记忆栈
-  - `knowledgeGraph.ts` — 时序知识图谱
-  - `exchangeExtractor.ts` — 交换对提取 + 标记评分
-  - `migration.ts` — .md → DrawerStore 自动迁移
-- 升级 `src/memdir/providers/FileMemoryProvider.ts` — DrawerStore + LayeredStack 后端
-- 接线 `src/services/compact/autoCompact.ts` — 压缩前调用 onPreCompress
+- Added `src/memdir/vectorStore/` — complete vector memory system (8 files)
+  - `types.ts` — Drawer, SearchResult, MetadataFilter types
+  - `tfidfVectorizer.ts` — TF-IDF + Porter stemming + cosine similarity
+  - `drawerStore.ts` — SQLite persistence + WAL + vector search
+  - `roomDetector.ts` — content auto-classification
+  - `layeredStack.ts` — 4-layer memory stack
+  - `knowledgeGraph.ts` — temporal knowledge graph
+  - `exchangeExtractor.ts` — exchange pair extraction + tag scoring
+  - `migration.ts` — .md → DrawerStore auto-migration
+- Upgraded `src/memdir/providers/FileMemoryProvider.ts` — DrawerStore + LayeredStack backend
+- Wired `src/services/compact/autoCompact.ts` — calls onPreCompress before compaction
 
 ## [1.4.2] - 2026-04-11
 
 ### Features
 
-- **verbose 默认开启** — 用户默认看到完整的工具执行过程和进度信息
-- **Token/Timer 即时显示** — 去掉 30 秒延迟，token 计数和耗时从第 1 秒就显示
-- **Autocompact 状态可见** — 压缩对话时显示 "Compacting conversation context..." 系统消息
-- **中断原因可见** — abort 时显示中断原因（streaming 和 tool_execution 两个阶段）
-- **Output truncated 重试提示** — max output tokens recovery 时显示重试进度
-- **工具执行日志** — StreamingToolExecutor 输出当前工具名和队列深度
-- **Microcompact/Snip 日志** — 压缩操作添加 debug 日志
-- **ForkedAgent 启动日志** — 子 agent 启动时输出标签和 ID
+- **verbose enabled by default** — users now see full tool execution progress and status information by default
+- **Token/Timer instant display** — removed 30-second delay, token count and elapsed time shown from second 1
+- **Autocompact status visible** — displays "Compacting conversation context..." system message during conversation compaction
+- **Interrupt reason visible** — shows abort reason on interruption (streaming and tool_execution phases)
+- **Output truncated retry prompt** — displays retry progress during max output tokens recovery
+- **Tool execution logging** — StreamingToolExecutor outputs current tool name and queue depth
+- **Microcompact/Snip logging** — added debug logging for compaction operations
+- **ForkedAgent startup logging** — outputs label and ID when child agent starts
 
 ### Bug Fixes
 
-- **Apple Terminal 通知逻辑修复** — bell 未禁用时才发 bell（之前逻辑反了）
+- **Apple Terminal notification logic fix** — bell is now sent only when bell is not disabled (logic was previously inverted)
 
 ## [1.4.0] - 2026-04-11
 
 ### Features
 
-- **MiniMax 深度原生兼容** — 当使用 MiniMax 模型且 `MINIMAX_API_KEY` 配置时，自动注册 6 个多模态原生工具：
-  - `MiniMaxImageGenerate` — 图像生成（POST /v1/image_generation）
-  - `MiniMaxVideoGenerate` — 视频生成 + 异步轮询（POST /v1/video_generation）
-  - `MiniMaxSpeechSynthesize` — 文字转语音（POST /v1/t2a_v2）
-  - `MiniMaxMusicGenerate` — 音乐生成（POST /v1/music_generation）
-  - `MiniMaxVisionDescribe` — 图像理解 VLM（POST /v1/coding_plan/vlm）
-  - `MiniMaxWebSearch` — 网页搜索（POST /v1/web_search）
-- **MiniMax 认证命令** — `/auth-minimax` 命令配置 API key，持久化到 `~/.legna/minimax-credentials.json`
-- **MiniMax 工具 Schema 导出** — `schemaExport.ts` 支持导出 Anthropic 兼容格式的工具 schema
-- **MiniMax 多模态 Skill 包** — 5 个内置 skill（image/video/speech/music/pipeline），指导 AI 编排多模态工作流
-- **智能模型路由** — 基于 prompt 复杂度启发式路由到 fast/default/strong 模型层
-- **自主技能检测** — 检测重复工具调用模式，提示用户保存为可复用技能
-- **上下文压缩增强**：
-  - 工具输出预剪枝 — 大型 tool_result 在 compact 前自动裁剪（head + tail 保留）
-  - 预算压力注入 — context 使用超 80% 时在工具结果中注入提示，引导模型收尾
-- **RPC 子进程工具执行** — Unix Domain Socket RPC 服务端 + stub 生成器 + 代码执行运行器，AI 生成的脚本可通过 RPC 回调 LegnaCode 工具（Bash/Read/Write/Edit/Glob/Grep/WebFetch），多步操作压缩为一次推理
-- **Memory Provider 插件系统** — 抽象基类 + 注册表 + 默认 FileMemoryProvider，支持一个外部 provider 与内置 memory 并行运行，完整生命周期（initialize/prefetch/syncTurn/shutdown）+ 可选 hooks（onTurnStart/onSessionEnd/onPreCompress/onDelegation）
-- **跨会话记忆搜索** — `/recall` 命令搜索历史会话 JSONL 文件，关键词匹配 + 相关性排序
-- **Worker 线程池** — 大文件操作 / 批量搜索可 offload 到 worker 线程，避免主线程阻塞
+- **MiniMax deep native integration** — when using MiniMax models with `MINIMAX_API_KEY` configured, automatically registers 6 native multimodal tools:
+  - `MiniMaxImageGenerate` — image generation (POST /v1/image_generation)
+  - `MiniMaxVideoGenerate` — video generation + async polling (POST /v1/video_generation)
+  - `MiniMaxSpeechSynthesize` — text-to-speech (POST /v1/t2a_v2)
+  - `MiniMaxMusicGenerate` — music generation (POST /v1/music_generation)
+  - `MiniMaxVisionDescribe` — image understanding VLM (POST /v1/coding_plan/vlm)
+  - `MiniMaxWebSearch` — web search (POST /v1/web_search)
+- **MiniMax auth command** — `/auth-minimax` command to configure API key, persisted to `~/.legna/minimax-credentials.json`
+- **MiniMax tool schema export** — `schemaExport.ts` supports exporting Anthropic-compatible tool schemas
+- **MiniMax multimodal skill pack** — 5 built-in skills (image/video/speech/music/pipeline) guiding AI to orchestrate multimodal workflows
+- **Smart model routing** — heuristic routing to fast/default/strong model tiers based on prompt complexity
+- **Autonomous skill detection** — detects repetitive tool call patterns and prompts users to save as reusable skills
+- **Context compression enhancements**:
+  - Tool output pre-pruning — large tool_result blocks auto-trimmed before compact (head + tail preserved)
+  - Budget pressure injection — injects hints into tool results when context usage exceeds 80%, guiding the model to wrap up
+- **RPC subprocess tool execution** — Unix Domain Socket RPC server + stub generator + code execution runner; AI-generated scripts can call back LegnaCode tools (Bash/Read/Write/Edit/Glob/Grep/WebFetch) via RPC, compressing multi-step operations into a single inference
+- **Memory Provider plugin system** — abstract base class + registry + default FileMemoryProvider; supports one external provider running in parallel with built-in memory, full lifecycle (initialize/prefetch/syncTurn/shutdown) + optional hooks (onTurnStart/onSessionEnd/onPreCompress/onDelegation)
+- **Cross-session memory search** — `/recall` command searches historical session JSONL files with keyword matching + relevance ranking
+- **Worker thread pool** — large file operations / batch searches can be offloaded to worker threads, avoiding main thread blocking
 
 ### Architecture
 
-- 新增 `src/tools/MiniMaxTools/` — 完整的 MiniMax 多模态工具目录（client、endpoints、6 个 buildTool 工具、条件注册、schema 导出）
-- 新增 `src/services/rpc/` — RPC 子进程工具执行（rpcServer.ts、stubGenerator.ts、codeExecutionRunner.ts）
-- 新增 `src/memdir/providers/` — Memory Provider 插件系统（MemoryProvider.ts 抽象基类、FileMemoryProvider.ts 默认实现、registry.ts 注册表）
-- 新增 `src/services/modelRouter.ts` — 任务复杂度估算 + 模型层路由
-- 新增 `src/services/skillAutoCreate.ts` — 工具调用模式检测器，接入 toolExecution.ts
-- 新增 `src/services/compact/toolOutputPruner.ts` — 工具输出预剪枝，接入 autoCompact.ts
-- 新增 `src/services/compact/budgetPressure.ts` — 上下文预算压力注入，接入 query.ts
-- 新增 `src/services/sessionSearch.ts` — 跨会话搜索引擎
-- 新增 `src/commands/recall/` — `/recall` 命令
-- 新增 `src/commands/auth/` — `/auth-minimax` 命令
-- 新增 `src/skills/builtin-minimax/` — 5 个 MiniMax 多模态 skill 文件
-- 新增 `src/utils/workerPool.ts` — Worker 线程池
+- Added `src/tools/MiniMaxTools/` — complete MiniMax multimodal tool directory (client, endpoints, 6 buildTool tools, conditional registration, schema export)
+- Added `src/services/rpc/` — RPC subprocess tool execution (rpcServer.ts, stubGenerator.ts, codeExecutionRunner.ts)
+- Added `src/memdir/providers/` — Memory Provider plugin system (MemoryProvider.ts abstract base class, FileMemoryProvider.ts default implementation, registry.ts registry)
+- Added `src/services/modelRouter.ts` — task complexity estimation + model tier routing
+- Added `src/services/skillAutoCreate.ts` — tool call pattern detector, integrated into toolExecution.ts
+- Added `src/services/compact/toolOutputPruner.ts` — tool output pre-pruning, integrated into autoCompact.ts
+- Added `src/services/compact/budgetPressure.ts` — context budget pressure injection, integrated into query.ts
+- Added `src/services/sessionSearch.ts` — cross-session search engine
+- Added `src/commands/recall/` — `/recall` command
+- Added `src/commands/auth/` — `/auth-minimax` command
+- Added `src/skills/builtin-minimax/` — 5 MiniMax multimodal skill files
+- Added `src/utils/workerPool.ts` — worker thread pool
 
 ## [1.3.7] - 2026-04-09
 
 ### Bug Fixes
 
-- **Resume 会话检测** — `legna resume` 无法发现 v1.3.0+ 写入 `<project>/.legna/sessions/` 的会话。`getStatOnlyLogsForWorktrees()` 只扫描全局 `~/.legna/projects/`，现在同时扫描项目本地 sessions 目录，与 `fetchLogs()` 行为一致
-- **Interrupted 诊断日志** — `onCancel()` 和 `query.ts` 中断点新增 abort reason + 调用栈日志，`--verbose` 模式下可追踪中断来源
+- **Resume session detection** — `legna resume` failed to discover sessions written to `<project>/.legna/sessions/` since v1.3.0. `getStatOnlyLogsForWorktrees()` only scanned the global `~/.legna/projects/`; it now also scans the project-local sessions directory, consistent with `fetchLogs()` behavior
+- **Interrupted diagnostics logging** — added abort reason + call stack logging at `onCancel()` and `query.ts` interrupt points; traceable under `--verbose` mode
 
 ### Enhancements
 
-- **Priority-now 中断可见性** — 排队命令中断当前任务时记录命令摘要到 debug 日志，不再静默 abort
-- **后台任务状态可见性** — footer pill 单个后台 agent 显示实时活动摘要（最近工具 + token 统计），任务完成通知包含 progress 统计
+- **Priority-now interrupt visibility** — when a queued command interrupts the current task, the command summary is logged to debug log instead of silently aborting
+- **Background task status visibility** — footer pill shows real-time activity summary for a single background agent (latest tool + token stats); task completion notification includes progress statistics
 
 ### Architecture
 
-- `src/utils/sessionStorage.ts` — `getStatOnlyLogsForWorktrees()` Path A/B 均加入 `.legna/sessions/` 扫描
-- `src/query.ts` — 两个 `createUserInterruptionMessage` 调用点加 abort reason 日志
-- `src/screens/REPL.tsx` — `onCancel()` 调用栈日志，priority-now useEffect 记录命令摘要
-- `src/tasks/pillLabel.ts` — 单 agent 任务显示 `getActivitySummary()` 实时活动
-- `src/tasks/LocalMainSessionTask.ts` — `completeMainSessionTask` 捕获 progress，通知包含统计
+- `src/utils/sessionStorage.ts` — `getStatOnlyLogsForWorktrees()` Path A/B both include `.legna/sessions/` scanning
+- `src/query.ts` — abort reason logging added at both `createUserInterruptionMessage` call sites
+- `src/screens/REPL.tsx` — `onCancel()` call stack logging, priority-now useEffect logs command summary
+- `src/tasks/pillLabel.ts` — single agent task displays `getActivitySummary()` real-time activity
+- `src/tasks/LocalMainSessionTask.ts` — `completeMainSessionTask` captures progress, notification includes statistics
 
 ## [1.3.6] - 2026-04-09
 
 ### Bug Fixes
 
-- **Windows Edit 工具路径分隔符误报** — 修复 [#7935](https://github.com/anthropics/claude-code/issues/7935)：在 Windows 上使用正斜杠（`D:/path`）读取文件后，Edit/MultiEdit 工具报 "File has been unexpectedly modified" 错误。根因是 `path.normalize()` 在某些运行时（Bun 编译二进制 + Git Bash/MINGW 环境）不一定将 `/` 转换为 `\`，导致 FileStateCache 缓存键不匹配
-  - `FileStateCache` 新增 `normalizeKey()` — 在 `path.normalize()` 之后显式将 `/` 替换为原生分隔符（Windows 上为 `\`），确保 `D:/foo` 和 `D:\foo` 始终命中同一缓存条目
-  - `expandPath()` 新增 `ensureNativeSeparators()` — 所有返回路径在 Windows 上强制使用反斜杠，防御性修复
+- **Windows Edit tool path separator false positive** — fixed [#7935](https://github.com/anthropics/claude-code/issues/7935): on Windows, after reading a file with forward slashes (`D:/path`), Edit/MultiEdit tools reported "File has been unexpectedly modified" error. Root cause: `path.normalize()` does not always convert `/` to `\` in certain runtimes (Bun compiled binary + Git Bash/MINGW environment), causing FileStateCache key mismatch
+  - `FileStateCache` added `normalizeKey()` — explicitly replaces `/` with the native separator (Windows: `\`) after `path.normalize()`, ensuring `D:/foo` and `D:\foo` always hit the same cache entry
+  - `expandPath()` added `ensureNativeSeparators()` — all returned paths force backslashes on Windows as a defensive fix
 
 ### Architecture
 
-- `src/utils/fileStateCache.ts` — `normalizeKey()` 替代裸 `normalize()`，导入 `sep`
-- `src/utils/path.ts` — `ensureNativeSeparators()` 包裹所有 `normalize()`/`resolve()`/`join()` 返回值
+- `src/utils/fileStateCache.ts` — `normalizeKey()` replaces bare `normalize()`, imports `sep`
+- `src/utils/path.ts` — `ensureNativeSeparators()` wraps all `normalize()`/`resolve()`/`join()` return values
 
 ## [1.3.5] - 2026-04-07
 
 ### Bug Fixes
 
-- **SessionStart hook error** — OML 的 SessionStart hook 使用了 `type: 'prompt'`，但 SessionStart 阶段没有 `toolUseContext`（LLM 调用上下文），导致必崩。移除 SessionStart hook，skill guidance 通过 skill description 暴露
-- **Windows alt-screen 渲染闪烁** — alt-screen 模式下 `fullResetSequence_CAUSES_FLICKER` 仍会触发（viewport 变化、scrollback 检测等），导致整屏清除+重绘闪烁。新增 `altScreenFullRedraw()` 方法，alt-screen 下用简单的 `CSI 2J + CSI H`（erase screen + cursor home）替代 `clearTerminal` 的 Windows legacy 路径
-- **Windows drainStdin** — 之前在 Windows 上完全跳过 stdin 排空，鼠标事件残留导致输入框错乱。改为通过 toggle raw mode 刷新缓冲的输入事件
+- **SessionStart hook error** — OML's SessionStart hook used `type: 'prompt'`, but the SessionStart phase has no `toolUseContext` (LLM call context), causing a guaranteed crash. Removed SessionStart hook; skill guidance is now exposed through skill descriptions
+- **Windows alt-screen rendering flicker** — in alt-screen mode, `fullResetSequence_CAUSES_FLICKER` was still triggered (viewport changes, scrollback detection, etc.), causing full-screen clear + redraw flicker. Added `altScreenFullRedraw()` method; in alt-screen mode, uses simple `CSI 2J + CSI H` (erase screen + cursor home) instead of `clearTerminal`'s Windows legacy path
+- **Windows drainStdin** — previously skipped stdin draining entirely on Windows; residual mouse events caused input field corruption. Changed to flush buffered input events by toggling raw mode
 
 ### Architecture
 
-- `src/ink/log-update.ts` — 5 个 `fullResetSequence_CAUSES_FLICKER` 调用点加 `altScreen` 检查，新增 `altScreenFullRedraw()` 方法
-- `src/ink/ink.tsx` — Windows `drainStdin` 替代方案（toggle raw mode）
-- `src/plugins/bundled/oml/definition.ts` — 移除 SessionStart hook，OML 升级到 1.2.0
+- `src/ink/log-update.ts` — 5 `fullResetSequence_CAUSES_FLICKER` call sites now check `altScreen`, added `altScreenFullRedraw()` method
+- `src/ink/ink.tsx` — Windows `drainStdin` alternative (toggle raw mode)
+- `src/plugins/bundled/oml/definition.ts` — removed SessionStart hook, OML upgraded to 1.2.0
 
 ## [1.3.4] - 2026-04-07
 
 ### New Features
 
-- **OML Superpowers 工程纪律** — 集成 obra/superpowers 核心技能，强制 AI 遵循严格的软件工程流程
-  - `/verify` — 完成前验证纪律：没有新鲜证据不能声称完成
-  - `/tdd` — TDD 强制执行：RED-GREEN-REFACTOR，先写测试再写代码
-  - `/debug` — 4 阶段系统化调试，3 次失败质疑架构
-  - `/brainstorm` — 苏格拉底式设计：硬门控，设计未批准前禁止实现
-  - `/write-plan` — 将设计拆成 2-5 分钟的小任务，零占位符
-  - `/sdd` — 子代理驱动开发：实现→spec 审查→质量审查三阶段
-  - `/exec-plan` — 加载计划文件逐任务执行
-  - `/dispatch` — 并行子代理派发
-  - `/code-review` — 派发 reviewer 子代理
-  - `/worktree` — Git worktree 隔离开发
-  - `/finish-branch` — 分支收尾（合并/PR/保留/丢弃）
-- **SessionStart 技能引导** — 会话启动时自动注入 OML 技能引导 prompt（"1% 规则"）
-- OML plugin 版本升级到 1.1.0，总计 35 个内置 skill
+- **OML Superpowers engineering discipline** — integrated obra/superpowers core skills, enforcing strict software engineering workflows for AI
+  - `/verify` — completion verification discipline: cannot claim completion without fresh evidence
+  - `/tdd` — TDD enforcement: RED-GREEN-REFACTOR, write tests before code
+  - `/debug` — 4-stage systematic debugging, question architecture after 3 failures
+  - `/brainstorm` — Socratic design: hard gate, no implementation allowed until design is approved
+  - `/write-plan` — break design into 2-5 minute tasks, zero placeholders
+  - `/sdd` — sub-agent driven development: implement → spec review → quality review, 3 stages
+  - `/exec-plan` — load plan file and execute tasks sequentially
+  - `/dispatch` — parallel sub-agent dispatch
+  - `/code-review` — dispatch reviewer sub-agent
+  - `/worktree` — Git worktree isolated development
+  - `/finish-branch` — branch wrap-up (merge/PR/keep/discard)
+- **SessionStart skill guidance** — automatically injects OML skill guidance prompt at session start ("1% rule")
+- OML plugin version upgraded to 1.1.0, 35 built-in skills total
 
 ### Architecture
 
-- `src/plugins/bundled/oml/superpowers.ts` — 11 个工程纪律 skill + SessionStart guidance
-- `src/plugins/bundled/oml/definition.ts` — 追加 superpowers skills + SessionStart hook
+- `src/plugins/bundled/oml/superpowers.ts` — 11 engineering discipline skills + SessionStart guidance
+- `src/plugins/bundled/oml/definition.ts` — appended superpowers skills + SessionStart hook
 
 ## [1.3.3] - 2026-04-07
 
 ### New Features
 
-- **OML (Oh-My-LegnaCode) 智能编排层** — 内置 oh-my-claudecode 核心功能，开箱即用
-  - 5 个编排 skill：`/ultrawork`（并行执行）、`/ralph`（持久循环）、`/autopilot`（全自主）、`/ralplan`（先规划再执行）、`/plan-oml`（结构化规划）
-  - 19 个专业化 agent skill：`/oml:explore`、`/oml:planner`、`/oml:architect`、`/oml:executor`、`/oml:verifier` 等
-  - Magic Keywords 自动检测：prompt 中包含 ultrawork/ralph/autopilot/ultrathink 等关键词时自动注入编排指令（支持中日韩越多语言）
-  - 通过 `/plugin` UI 可启用/禁用（`oml@builtin`，默认启用）
-  - `OML_BUILTIN` feature flag 控制编译时 DCE
+- **OML (Oh-My-LegnaCode) smart orchestration layer** — built-in oh-my-claudecode core functionality, works out of the box
+  - 5 orchestration skills: `/ultrawork` (parallel execution), `/ralph` (persistent loop), `/autopilot` (fully autonomous), `/ralplan` (plan then execute), `/plan-oml` (structured planning)
+  - 19 specialized agent skills: `/oml:explore`, `/oml:planner`, `/oml:architect`, `/oml:executor`, `/oml:verifier`, etc.
+  - Magic Keywords auto-detection: when prompt contains keywords like ultrawork/ralph/autopilot/ultrathink, orchestration directives are auto-injected (supports CJK and Vietnamese)
+  - Can be enabled/disabled via `/plugin` UI (`oml@builtin`, enabled by default)
+  - `OML_BUILTIN` feature flag controls compile-time DCE
 
 ### Bug Fixes
 
-- **Windows Terminal Fullscreen** — `WT_SESSION` 环境下自动启用 alt-screen 模式，彻底消除 cursor-up viewport yank bug（microsoft/terminal#14774）。覆盖 WSL-in-Windows-Terminal。`CLAUDE_CODE_NO_FLICKER=0` 可 opt-out
+- **Windows Terminal Fullscreen** — automatically enables alt-screen mode in `WT_SESSION` environment, completely eliminating the cursor-up viewport yank bug (microsoft/terminal#14774). Covers WSL-in-Windows-Terminal. `CLAUDE_CODE_NO_FLICKER=0` to opt-out
 
 ### Architecture
 
-- `src/plugins/bundled/oml/` — OML plugin 模块（definition、skills、agents、magicKeywords）
-- `src/plugins/bundled/index.ts` — 注册 OML builtin plugin
-- `src/utils/processUserInput/processUserInput.ts` — magic keyword 检测集成点
-- `src/utils/fullscreen.ts` — Windows Terminal fullscreen 条件
+- `src/plugins/bundled/oml/` — OML plugin module (definition, skills, agents, magicKeywords)
+- `src/plugins/bundled/index.ts` — registered OML builtin plugin
+- `src/utils/processUserInput/processUserInput.ts` — magic keyword detection integration point
+- `src/utils/fullscreen.ts` — Windows Terminal fullscreen condition
 
 ## [1.3.2] - 2026-04-07
 
 ### Breaking Changes
 
-- **禁用 HISTORY_SNIP** — `bunfig.toml` feature flag 设为 false，编译时 DCE 移除所有 snip 相关代码（SnipTool、snipCompact、snipProjection、force-snip 命令、attachments nudge）。auto-compact 不受影响，上下文管理回归原有机制
+- **Disabled HISTORY_SNIP** — `bunfig.toml` feature flag set to false, compile-time DCE removes all snip-related code (SnipTool, snipCompact, snipProjection, force-snip command, attachments nudge). Auto-compact is unaffected; context management reverts to the original mechanism
 
 ### Bug Fixes
 
-- **Windows Terminal 流式文本** — 不再对所有 Windows 禁用流式文本显示，改为仅在 legacy conhost 下禁用；Windows Terminal（检测 `WT_SESSION` 环境变量）恢复正常流式渲染
+- **Windows Terminal streaming text** — no longer disables streaming text display for all Windows; now only disabled under legacy conhost. Windows Terminal (detected via `WT_SESSION` environment variable) restores normal streaming rendering
 
 ## [1.3.1] - 2026-04-06
 
 ### Bug Fixes
 
-- **Snip 感知 context window** — 1M 模型不再被过早 snip，`KEEP_RECENT` 从硬编码 10 改为动态计算（1M: 200, 500K: 100, 200K: 10）
-- **Snip nudge 频率** — 1M 模型 nudge 阈值从 20 条提升到 100 条
-- **branch 命令品牌名** — `/branch` 后的 resume 提示从 `claude -r` 改为 `legna -r`
-- **admin 版本号 fallback** — 从源码运行时显示正确版本号
+- **Snip-aware context window** — 1M models are no longer prematurely snipped; `KEEP_RECENT` changed from hardcoded 10 to dynamic calculation (1M: 200, 500K: 100, 200K: 10)
+- **Snip nudge frequency** — 1M model nudge threshold raised from 20 to 100 messages
+- **branch command branding** — `/branch` resume prompt changed from `claude -r` to `legna -r`
+- **admin version fallback** — displays correct version number when running from source
 
 ### Architecture
 
-- `src/services/compact/snipCompact.ts` — 新增 `getSnipThresholds(model)` 动态阈值函数，`snipCompactIfNeeded` 和 `shouldNudgeForSnips` 增加 model 参数
-- `src/query.ts` / `src/QueryEngine.ts` / `src/commands/force-snip-impl.ts` — 传入 model 参数
+- `src/services/compact/snipCompact.ts` — added `getSnipThresholds(model)` dynamic threshold function; `snipCompactIfNeeded` and `shouldNudgeForSnips` gained model parameter
+- `src/query.ts` / `src/QueryEngine.ts` / `src/commands/force-snip-impl.ts` — pass model parameter
 
 ## [1.3.0] - 2026-04-04
 
 ### New Features
 
-- **项目本地化存储** — 会话、skills、memory、rules、settings 全部下沉到 `<project>/.legna/` 目录
-  - 新会话写入 `<project>/.legna/sessions/<uuid>.jsonl`，跟着项目走
-  - 项目级 skills/rules/settings/agent-memory/workflows 统一到 `.legna/` 下
-  - `.legna/` 自动加入 `.gitignore`
-- **全局数据迁移** — 首次启动自动从 `~/.claude/` 单向迁移到 `~/.legna/`
-  - 迁移 settings.json、credentials、rules、skills、agents、plugins、keybindings 等
-  - 不覆盖已有文件，迁移完成写入 `.migration-done` 标记
-  - `LEGNA_NO_CONFIG_SYNC=1` 可禁止
-- **`legna migrate` 命令** — 手动迁移数据
-  - `--global` 仅迁移全局数据
-  - `--sessions` 仅迁移当前项目会话到本地
-  - `--all` 全部迁移（默认）
-  - `--dry-run` 预览模式
-- **三级 fallback 读取** — 读取时自动搜索 `.legna/` → `.claude/` → `~/.legna/` → `~/.claude/`，零破坏向后兼容
+- **Project-local storage** — sessions, skills, memory, rules, and settings all moved down to `<project>/.legna/` directory
+  - New sessions written to `<project>/.legna/sessions/<uuid>.jsonl`, traveling with the project
+  - Project-level skills/rules/settings/agent-memory/workflows unified under `.legna/`
+  - `.legna/` automatically added to `.gitignore`
+- **Global data migration** — automatically migrates from `~/.claude/` to `~/.legna/` on first startup (one-way)
+  - Migrates settings.json, credentials, rules, skills, agents, plugins, keybindings, etc.
+  - Does not overwrite existing files; writes `.migration-done` marker on completion
+  - `LEGNA_NO_CONFIG_SYNC=1` to disable
+- **`legna migrate` command** — manual data migration
+  - `--global` migrates global data only
+  - `--sessions` migrates current project sessions to local only
+  - `--all` migrates everything (default)
+  - `--dry-run` preview mode
+- **Three-level fallback reads** — automatically searches `.legna/` → `.claude/` → `~/.legna/` → `~/.claude/` when reading, zero-breakage backward compatibility
 
 ### Architecture
 
-- `src/utils/legnaPathResolver.ts` — 统一路径解析（PROJECT_FOLDER/LEGACY_FOLDER/resolveProjectPath）
-- `src/utils/ensureLegnaGitignored.ts` — 自动 gitignore 工具
-- `src/utils/envUtils.ts` — 重构全局迁移逻辑，删除旧的 syncClaudeConfigToLegna
-- `src/utils/sessionStoragePortable.ts` — 新增 getLocalSessionsDir/getLegacyProjectsDir，重构 resolveSessionFilePath
-- `src/utils/sessionStorage.ts` — 会话写入路径切换到项目本地
-- `src/utils/listSessionsImpl.ts` — 多源扫描合并（本地 + 全局 + legacy）
-- `src/commands/migrate/` — CLI 迁移命令
+- `src/utils/legnaPathResolver.ts` — unified path resolution (PROJECT_FOLDER/LEGACY_FOLDER/resolveProjectPath)
+- `src/utils/ensureLegnaGitignored.ts` — auto-gitignore utility
+- `src/utils/envUtils.ts` — refactored global migration logic, removed old syncClaudeConfigToLegna
+- `src/utils/sessionStoragePortable.ts` — added getLocalSessionsDir/getLegacyProjectsDir, refactored resolveSessionFilePath
+- `src/utils/sessionStorage.ts` — session write path switched to project-local
+- `src/utils/listSessionsImpl.ts` — multi-source scan and merge (local + global + legacy)
+- `src/commands/migrate/` — CLI migration command
 
 ## [1.2.1] - 2026-04-04
 
 ### New Features
 
-- **模型适配器层 (Model Adapter Layer)** — 统一的第三方模型兼容框架，自动检测模型/端点并应用对应变换
-- **MiMo (Xiaomi) 适配器** — api.xiaomimimo.com/anthropic，支持 mimo-v2-pro/omni/flash (1M ctx)
+- **Model Adapter Layer** — unified third-party model compatibility framework, auto-detects model/endpoint and applies corresponding transforms
+- **MiMo (Xiaomi) adapter** — api.xiaomimimo.com/anthropic, supports mimo-v2-pro/omni/flash (1M ctx)
   - simplifyThinking + forceAutoToolChoice + normalizeTools + stripBetas + injectTopP(0.95) + stripCacheControl
-  - 处理 content_filter / repetition_truncation stop_reason
-- **GLM (ZhipuAI) 适配器** — open.bigmodel.cn/api/anthropic，支持 glm-5.1/5/5-turbo/4.7/4.6/4.5 等
-  - 标准变换全套，服务端自动缓存（strip cache_control）
-- **DeepSeek 适配器** — api.deepseek.com/anthropic，支持 deepseek-chat/coder/reasoner
-  - stripReasoningContent 避免 400 错误，reasoner 模型自动 strip temperature/top_p
-- **Kimi (Moonshot) 适配器** — api.moonshot.ai/anthropic，支持 kimi-k2/k2.5/k2-turbo 等
-  - 保留 cache_control（Kimi 支持 prompt caching 折扣），stripReasoningContent
-- **MiniMax 适配器** — api.minimaxi.com/anthropic (中国区) + api.minimax.io/anthropic (国际区)
-  - 支持 MiniMax-M2.7/M2.5/M2.1/M2 全系列 (204K ctx)，大小写不敏感匹配
-  - 深度兼容：保留 metadata、tool_choice、cache_control、top_p（其他适配器均需 strip/force）
-  - 仅需 simplifyThinking + normalizeTools + stripBetas + stripUnsupportedFieldsKeepMetadata
+  - Handles content_filter / repetition_truncation stop_reason
+- **GLM (ZhipuAI) adapter** — open.bigmodel.cn/api/anthropic, supports glm-5.1/5/5-turbo/4.7/4.6/4.5, etc.
+  - Full standard transform suite, server-side auto-caching (strip cache_control)
+- **DeepSeek adapter** — api.deepseek.com/anthropic, supports deepseek-chat/coder/reasoner
+  - stripReasoningContent to avoid 400 errors, reasoner models auto-strip temperature/top_p
+- **Kimi (Moonshot) adapter** — api.moonshot.ai/anthropic, supports kimi-k2/k2.5/k2-turbo, etc.
+  - Preserves cache_control (Kimi supports prompt caching discount), stripReasoningContent
+- **MiniMax adapter** — api.minimaxi.com/anthropic (China) + api.minimax.io/anthropic (international)
+  - Supports MiniMax-M2.7/M2.5/M2.1/M2 full series (204K ctx), case-insensitive matching
+  - Deep compatibility: preserves metadata, tool_choice, cache_control, top_p (other adapters need strip/force)
+  - Only needs simplifyThinking + normalizeTools + stripBetas + stripUnsupportedFieldsKeepMetadata
 
 ### Architecture
 
-- `src/utils/model/adapters/index.ts` — 适配器注册表 + match/transform 调度
-- `src/utils/model/adapters/shared.ts` — 12 个共享变换函数（含新增 stripUnsupportedFieldsKeepMetadata）
-- `src/utils/model/adapters/{mimo,glm,deepseek,kimi,minimax}.ts` — 5 个提供商适配器
-- `src/services/api/claude.ts` — paramsFromContext() 末尾调用 applyModelAdapter()
+- `src/utils/model/adapters/index.ts` — adapter registry + match/transform dispatch
+- `src/utils/model/adapters/shared.ts` — 12 shared transform functions (including new stripUnsupportedFieldsKeepMetadata)
+- `src/utils/model/adapters/{mimo,glm,deepseek,kimi,minimax}.ts` — 5 provider adapters
+- `src/services/api/claude.ts` — paramsFromContext() calls applyModelAdapter() at the end
 
 ## [1.2.0] - 2026-04-03
 
 ### New Features
 
-- **会话按项目分组** — WebUI 会话记录面板按项目路径分组显示
-- **resume 命令带 cd** — 复制的 resume 命令自动包含 `cd` 到项目目录（Windows 用 `cd /d`）
-- **迁移支持会话记录** — 配置迁移面板新增"同时迁移会话记录"选项，复制 `projects/` 目录
-- **Windows 原生编译** — Windows 二进制改为在 Windows 上原生编译
+- **Sessions grouped by project** — WebUI session history panel groups sessions by project path
+- **resume command with cd** — copied resume command auto-includes `cd` to project directory (Windows uses `cd /d`)
+- **Migration supports session history** — config migration panel adds "also migrate session history" option, copies `projects/` directory
+- **Windows native compilation** — Windows binary now compiled natively on Windows
 
 ### Fixed
 
-- 迁移面板字段名修正为实际 settings.json 字段
+- Migration panel field names corrected to match actual settings.json fields
 
 ## [1.1.10] - 2026-04-03
 
 ### Fixed
 
-- **Windows 编译脚本修复** — `scripts/compile.ts` 在 Windows 上正确处理 `.exe` 后缀，修复编译后找不到输出文件的问题
-- **Windows 原生二进制重新编译发布** — 使用 Windows 本机 Bun 编译原生 `legna.exe`，替代之前交叉编译的版本
+- **Windows compile script fix** — `scripts/compile.ts` correctly handles `.exe` suffix on Windows, fixing the issue where compiled output file could not be found
+- **Windows native binary recompiled and published** — recompiled native `legna.exe` using Windows-native Bun, replacing the previous cross-compiled version
 
 ## [1.1.9] - 2026-04-03
 
 ### Fixed
 
-- **postinstall 自动安装平台包** — 新增 `npm/postinstall.cjs`，`npm install` 阶段自动检测并从官方 registry 安装对应平台二进制包，彻底解决 Windows/镜像源下 optionalDependencies 不生效的问题
-- **强制官方 registry** — postinstall 使用 `--registry https://registry.npmjs.org` 避免淘宝镜像等未同步导致 404
-- **bin wrapper 精简** — 移除运行时 auto-install 逻辑，改由 postinstall 保证
+- **postinstall auto-installs platform package** — added `npm/postinstall.cjs`; during `npm install`, automatically detects and installs the corresponding platform binary package from the official registry, completely solving the issue where optionalDependencies fails on Windows/mirror registries
+- **Force official registry** — postinstall uses `--registry https://registry.npmjs.org` to avoid 404 errors from unsynchronized mirrors (e.g., Taobao)
+- **bin wrapper simplified** — removed runtime auto-install logic, now guaranteed by postinstall
 
 ## [1.1.8] - 2026-04-03
 
 ### Fixed
 
-- **Windows npm 全局安装平台包缺失** — bin wrapper 检测到平台包未安装时自动执行 `npm install -g` 安装对应平台包，不再需要用户手动操作
-- **bin wrapper 路径查找优化** — 修正全局 node_modules 扁平布局下 scope 目录的路径拼接
+- **Windows npm global install missing platform package** — bin wrapper now auto-executes `npm install -g` for the corresponding platform package when it detects the package is not installed, no longer requiring manual user action
+- **bin wrapper path lookup optimization** — fixed scope directory path joining under global node_modules flat layout
 
 ## [1.1.7] - 2026-04-03
 
 ### Fixed
 
-- **彻底修复 Windows external module 报错** — 清空编译 external 列表，所有 stubs 模块（`@ant/*`、`@anthropic-ai/*`、native napi）全部打包进二进制，不再依赖运行时外部模块
+- **Completely fixed Windows external module error** — cleared the compile external list; all stub modules (`@ant/*`, `@anthropic-ai/*`, native napi) are now bundled into the binary, no longer depending on runtime external modules
 
 ## [1.1.6] - 2026-04-03
 
 ### Fixed
 
-- **Windows external module 报错** — 从编译 external 列表移除 `@anthropic-ai/sandbox-runtime`、`@anthropic-ai/mcpb`、`@anthropic-ai/claude-agent-sdk`、`audio-capture-napi`、`color-diff-napi`、`modifiers-napi`，让 stubs 代码直接打包进二进制，Windows 不再报 `Cannot find module`
-- **bin wrapper 多路径查找** — `npm/bin/legna.cjs` 增加全局 node_modules 扁平路径和嵌套路径 fallback，提升跨平台 npm 全局安装兼容性
-- **版本号自动化** — 新增 `scripts/bump.ts` 一键同步 package.json、bunfig.toml、webui/package.json、optionalDependencies 版本号
-- **发版流程自动化** — 重写 `scripts/publish.ts`，一键完成 bump → build webui → compile all → publish npm
+- **Windows external module error** — removed `@anthropic-ai/sandbox-runtime`, `@anthropic-ai/mcpb`, `@anthropic-ai/claude-agent-sdk`, `audio-capture-napi`, `color-diff-napi`, `modifiers-napi` from the compile external list, letting stub code bundle directly into the binary; Windows no longer reports `Cannot find module`
+- **bin wrapper multi-path lookup** — `npm/bin/legna.cjs` added global node_modules flat path and nested path fallback, improving cross-platform npm global install compatibility
+- **Version number automation** — added `scripts/bump.ts` for one-click sync of version numbers across package.json, bunfig.toml, webui/package.json, and optionalDependencies
+- **Release process automation** — rewrote `scripts/publish.ts` for one-click bump → build webui → compile all → publish npm
 
 ## [1.1.5] - 2026-04-03
 
 ### New Features
 
-- **WebUI 管理面板** — `legna admin` 启动浏览器管理面板（HTTP server + React SPA，默认端口 3456），可视化管理 `~/.claude/` 和 `~/.legna/` 两个配置目录
-- **配置编辑** — 在浏览器中编辑 API 端点、API Key、模型映射（Opus/Sonnet/Haiku）、超时、权限模式、语言等所有 settings.json 字段
-- **配置文件切换** — 列出 settings*.json，显示 baseUrl/model，一键交换激活
-- **会话记录浏览** — 解析 projects 目录下所有 session jsonl 文件，显示项目路径、slug、时间、prompt 数量，复制 resume 命令
-- **配置迁移** — Claude ↔ LegnaCode 双向迁移，支持全量或选择性字段迁移（env/model/permissions 等），迁移前预览 diff
-- **npm 全平台发布** — bin wrapper (.cjs)、compile-all 跨平台编译（darwin/linux/win32）、publish 脚本
-- **OAuth 禁用** — `isAnthropicAuthEnabled()` 返回 false，移除 OAuth 登录流程
+- **WebUI admin panel** — `legna admin` launches a browser-based admin panel (HTTP server + React SPA, default port 3456), visual management of both `~/.claude/` and `~/.legna/` config directories
+- **Config editing** — edit API endpoint, API key, model mapping (Opus/Sonnet/Haiku), timeout, permission mode, language, and all other settings.json fields in the browser
+- **Config file switching** — lists settings*.json files, shows baseUrl/model, one-click swap to activate
+- **Session history browsing** — parses all session JSONL files under the projects directory, displays project path, slug, time, prompt count, and copy resume command
+- **Config migration** — Claude ↔ LegnaCode bidirectional migration, supports full or selective field migration (env/model/permissions, etc.), preview diff before migration
+- **npm cross-platform publishing** — bin wrapper (.cjs), compile-all cross-platform compilation (darwin/linux/win32), publish script
+- **OAuth disabled** — `isAnthropicAuthEnabled()` returns false, removed OAuth login flow
 
 ### Fixed (1.1.1 ~ 1.1.5)
 
-- bin wrapper 改为 `.cjs` 修复 ESM `require` 报错
-- `optionalDependencies` 平台包版本对齐
-- 退出 admin server 时清屏恢复终端
-- WebUI 前端内联到二进制，不再依赖外部 `webui/dist/`
-- 所有包版本统一为 1.1.5
+- bin wrapper changed to `.cjs` to fix ESM `require` error
+- `optionalDependencies` platform package versions aligned
+- Terminal restored on admin server exit with screen clear
+- WebUI frontend inlined into binary, no longer depends on external `webui/dist/`
+- All package versions unified to 1.1.5
 
 ### Architecture
 
-- 后端：`src/server/admin.ts` — Bun.serve REST API，SPA 内联为字符串常量
-- 前端：`webui/` — React 18 + Vite + Tailwind SPA，Tab 切换 scope
-- 内联：`scripts/inline-webui.ts` → `src/server/admin-ui-html.ts`
-- CLI：`src/entrypoints/cli.tsx` — `admin` fast-path，零额外模块加载
+- Backend: `src/server/admin.ts` — Bun.serve REST API, SPA inlined as string constant
+- Frontend: `webui/` — React 18 + Vite + Tailwind SPA, tab-based scope switching
+- Inlining: `scripts/inline-webui.ts` → `src/server/admin-ui-html.ts`
+- CLI: `src/entrypoints/cli.tsx` — `admin` fast-path, zero extra module loading
 
 ## [1.0.9] - 2026-04-03
 
 ### New Features
 
-- **i18n 多语言补全** — 补全 9 个文件约 100 处遗漏的硬编码英文字符串，覆盖 Spinner、队友树、pill 标签、快捷键提示、Tips 等全部 UI 区域
-- **内置精美状态栏** — 无需配置外部脚本，默认显示目录、Git 分支/同步状态、模型名（智能解析为友好名）、彩色上下文进度条、时间；跨平台兼容 Win/Mac/Linux
-- **配置自动迁移** — 启动时自动将 `~/.claude/settings.json` 同步到 `~/.legna/settings.json`；两边不一致时打印警告不覆盖；`LEGNA_NO_CONFIG_SYNC=1` 禁止迁移
+- **i18n multilingual completion** — completed ~100 missing hardcoded English strings across 9 files, covering Spinner, teammate tree, pill labels, keyboard shortcut hints, Tips, and all other UI areas
+- **Built-in styled status bar** — no external script configuration needed; displays directory, Git branch/sync status, model name (smart parsing to friendly name), colored context progress bar, and time by default; cross-platform compatible with Win/Mac/Linux
+- **Config auto-migration** — automatically syncs `~/.claude/settings.json` to `~/.legna/settings.json` on startup; prints warning without overwriting when both sides differ; `LEGNA_NO_CONFIG_SYNC=1` to disable
 
 ### Changed
 
-- `~/.legna/` 为首选配置目录，`~/.claude/` 作为兼容回退
-- 状态栏模型名自动解析：`Claude-Opus-4-6-Agentic[1m]` → `Opus 4.6`
-- `KeyboardShortcutHint` 组件中 "to" 连接词已国际化（中文显示为 "→"）
+- `~/.legna/` is now the preferred config directory, `~/.claude/` serves as compatibility fallback
+- Status bar model name auto-parsing: `Claude-Opus-4-6-Agentic[1m]` → `Opus 4.6`
+- `KeyboardShortcutHint` component "to" connector word internationalized (Chinese displays "→")
 
 ### Files Changed
 
-| 文件 | 改动 |
-|------|------|
-| `src/utils/i18n/zh.ts` | +50 条翻译条目 |
-| `src/components/Spinner.tsx` | 7 处 i18n |
-| `src/components/PromptInput/PromptInputFooterLeftSide.tsx` | 4 处 i18n |
-| `src/components/design-system/KeyboardShortcutHint.tsx` | "to" 国际化 |
+| File | Changes |
+|------|---------|
+| `src/utils/i18n/zh.ts` | +50 translation entries |
+| `src/components/Spinner.tsx` | 7 i18n points |
+| `src/components/PromptInput/PromptInputFooterLeftSide.tsx` | 4 i18n points |
+| `src/components/design-system/KeyboardShortcutHint.tsx` | "to" internationalized |
 | `src/components/Spinner/teammateSelectHint.ts` | i18n |
-| `src/components/Spinner/TeammateSpinnerTree.tsx` | 6 处 i18n |
-| `src/components/Spinner/TeammateSpinnerLine.tsx` | 7 处 i18n |
-| `src/tasks/pillLabel.ts` | 全部 pill 标签 i18n |
-| `src/services/tips/tipRegistry.ts` | 25 条 tips i18n |
-| `src/utils/builtinStatusLine.ts` | 新增：内置状态栏渲染器 |
-| `src/components/StatusLine.tsx` | 集成内置状态栏 |
-| `src/utils/envUtils.ts` | 配置自动迁移逻辑 |
+| `src/components/Spinner/TeammateSpinnerTree.tsx` | 6 i18n points |
+| `src/components/Spinner/TeammateSpinnerLine.tsx` | 7 i18n points |
+| `src/tasks/pillLabel.ts` | all pill labels i18n |
+| `src/services/tips/tipRegistry.ts` | 25 tips i18n |
+| `src/utils/builtinStatusLine.ts` | added: built-in status bar renderer |
+| `src/components/StatusLine.tsx` | integrated built-in status bar |
+| `src/utils/envUtils.ts` | config auto-migration logic |
 
 ## [1.0.8] - 2026-04-02
 
 ### New Features
 
-- **MONITOR_TOOL** — MCP 服务器健康监控工具，支持 start/stop/status 操作，后台定期 ping 检测连接状态
-- **WORKFLOW_SCRIPTS** — 工作流自动化系统，读取 `.claude/workflows/*.md` 执行多步骤工作流，`/workflows` 命令列出可用工作流
-- **HISTORY_SNIP** — 会话历史裁剪，模型可主动调用 SnipTool 移除旧消息释放上下文，`/force-snip` 强制裁剪，UI 保留完整历史而模型视图过滤
+- **MONITOR_TOOL** — MCP server health monitoring tool, supports start/stop/status operations, background periodic ping to detect connection status
+- **WORKFLOW_SCRIPTS** — workflow automation system, reads `.claude/workflows/*.md` to execute multi-step workflows, `/workflows` command lists available workflows
+- **HISTORY_SNIP** — session history trimming, model can proactively call SnipTool to remove old messages and free context, `/force-snip` for forced trimming, UI retains full history while model view is filtered
 
 ### Infrastructure
 
-- 新增 `src/tools/MonitorTool/MonitorTool.ts` — MCP 监控工具（buildTool 构建）
-- 新增 `src/tasks/MonitorMcpTask/MonitorMcpTask.ts` — 监控后台任务生命周期管理
-- 新增 `src/components/permissions/MonitorPermissionRequest/` — 监控权限 UI
-- 新增 `src/components/tasks/MonitorMcpDetailDialog.tsx` — 监控任务详情对话框
-- 新增 `src/tools/WorkflowTool/WorkflowTool.ts` — 工作流执行工具
-- 新增 `src/tools/WorkflowTool/createWorkflowCommand.ts` — 工作流命令扫描与注册
-- 新增 `src/tools/WorkflowTool/bundled/index.ts` — 内置工作流注册入口
-- 新增 `src/tools/WorkflowTool/WorkflowPermissionRequest.tsx` — 工作流权限 UI
-- 新增 `src/commands/workflows/` — `/workflows` 斜杠命令
-- 新增 `src/tasks/LocalWorkflowTask/LocalWorkflowTask.ts` — 工作流后台任务（kill/skip/retry）
-- 新增 `src/components/tasks/WorkflowDetailDialog.tsx` — 工作流详情对话框
-- 新增 `src/services/compact/snipCompact.ts` — 裁剪触发逻辑（重写 stub）
-- 新增 `src/services/compact/snipProjection.ts` — 模型视图消息过滤
-- 新增 `src/tools/SnipTool/SnipTool.ts` — 模型调用的裁剪工具
-- 新增 `src/tools/SnipTool/prompt.ts` — SnipTool 常量与 prompt
-- 新增 `src/commands/force-snip.ts` — `/force-snip` 斜杠命令
-- 新增 `src/components/messages/SnipBoundaryMessage.tsx` — 裁剪边界 UI 组件
-- 3 个 feature flags 翻转：MONITOR_TOOL、WORKFLOW_SCRIPTS、HISTORY_SNIP
-- 累计已开启 47/87 个 feature flags
+- Added `src/tools/MonitorTool/MonitorTool.ts` — MCP monitoring tool (buildTool construction)
+- Added `src/tasks/MonitorMcpTask/MonitorMcpTask.ts` — monitoring background task lifecycle management
+- Added `src/components/permissions/MonitorPermissionRequest/` — monitoring permission UI
+- Added `src/components/tasks/MonitorMcpDetailDialog.tsx` — monitoring task detail dialog
+- Added `src/tools/WorkflowTool/WorkflowTool.ts` — workflow execution tool
+- Added `src/tools/WorkflowTool/createWorkflowCommand.ts` — workflow command scanning and registration
+- Added `src/tools/WorkflowTool/bundled/index.ts` — built-in workflow registration entry
+- Added `src/tools/WorkflowTool/WorkflowPermissionRequest.tsx` — workflow permission UI
+- Added `src/commands/workflows/` — `/workflows` slash command
+- Added `src/tasks/LocalWorkflowTask/LocalWorkflowTask.ts` — workflow background task (kill/skip/retry)
+- Added `src/components/tasks/WorkflowDetailDialog.tsx` — workflow detail dialog
+- Added `src/services/compact/snipCompact.ts` — trim trigger logic (rewrote stub)
+- Added `src/services/compact/snipProjection.ts` — model view message filtering
+- Added `src/tools/SnipTool/SnipTool.ts` — model-callable trimming tool
+- Added `src/tools/SnipTool/prompt.ts` — SnipTool constants and prompt
+- Added `src/commands/force-snip.ts` — `/force-snip` slash command
+- Added `src/components/messages/SnipBoundaryMessage.tsx` — trim boundary UI component
+- 3 feature flags flipped: MONITOR_TOOL, WORKFLOW_SCRIPTS, HISTORY_SNIP
+- Cumulative 47/87 feature flags enabled
 
 ## [1.0.7] - 2026-04-02
 
 ### New Features
 
-- **TERMINAL_PANEL** — `Alt+J` 切换内置终端面板（tmux 持久化），TerminalCapture 工具可读取终端内容
-- **WEB_BROWSER_TOOL** — 内置 Web 浏览工具，fetch 抓取网页内容并提取文本
-- **TEMPLATES** — 结构化工作流模板系统，`legna new/list/reply` CLI 命令，job 状态追踪
-- **BG_SESSIONS** — 后台会话管理，`legna ps/logs/attach/kill/--bg`，tmux 持久化 + PID 文件发现
+- **TERMINAL_PANEL** — `Alt+J` toggles built-in terminal panel (tmux persistent), TerminalCapture tool can read terminal content
+- **WEB_BROWSER_TOOL** — built-in web browsing tool, fetches web page content and extracts text
+- **TEMPLATES** — structured workflow template system, `legna new/list/reply` CLI commands, job status tracking
+- **BG_SESSIONS** — background session management, `legna ps/logs/attach/kill/--bg`, tmux persistence + PID file discovery
 
 ### Infrastructure
 
-- 新增 `src/tools/TerminalCaptureTool/` — tmux capture-pane 工具（2 文件）
-- 新增 `src/tools/WebBrowserTool/WebBrowserTool.ts` — fetch + HTML 文本提取
-- 新增 `src/jobs/classifier.ts` — 工作流 turn 分类器
-- 新增 `src/cli/handlers/templateJobs.ts` — 模板 CLI 处理器
-- 新增 `src/cli/bg.ts` — 后台会话 CLI（5 个 handler）
-- 新增 `src/utils/taskSummary.ts` — 周期性活动摘要
-- 新增 `src/utils/udsClient.ts` — 活跃会话枚举
-- 累计已开启 44/87 个 feature flags
+- Added `src/tools/TerminalCaptureTool/` — tmux capture-pane tool (2 files)
+- Added `src/tools/WebBrowserTool/WebBrowserTool.ts` — fetch + HTML text extraction
+- Added `src/jobs/classifier.ts` — workflow turn classifier
+- Added `src/cli/handlers/templateJobs.ts` — template CLI handler
+- Added `src/cli/bg.ts` — background session CLI (5 handlers)
+- Added `src/utils/taskSummary.ts` — periodic activity summary
+- Added `src/utils/udsClient.ts` — active session enumeration
+- Cumulative 44/87 feature flags enabled
 
 ## [1.0.6] - 2026-04-02
 
 ### New Features
 
-- **CACHED_MICROCOMPACT** — 缓存感知的工具结果压缩，通过 API cache_edits 指令删除旧 tool_result 而不破坏 prompt cache
-- **AGENT_TRIGGERS** — `/loop` cron 调度命令 + CronCreate/Delete/List 工具，本地定时任务引擎
-- **TREE_SITTER_BASH** — 纯 TypeScript bash AST 解析器（~4300 行），用于命令安全分析
-- **TREE_SITTER_BASH_SHADOW** — tree-sitter 与 legacy 解析器的 shadow 对比模式
-- **MCP_SKILLS** — 从 MCP 服务器 `skill://` 资源自动发现并注册技能命令
-- **REACTIVE_COMPACT** — 413/过载错误时自动触发上下文压缩
-- **REVIEW_ARTIFACT** — `/review` 代码审查技能 + ReviewArtifact 工具
+- **CACHED_MICROCOMPACT** — cache-aware tool result compression, deletes old tool_result via API cache_edits directive without breaking prompt cache
+- **AGENT_TRIGGERS** — `/loop` cron scheduling command + CronCreate/Delete/List tools, local scheduled task engine
+- **TREE_SITTER_BASH** — pure TypeScript bash AST parser (~4300 lines), used for command safety analysis
+- **TREE_SITTER_BASH_SHADOW** — tree-sitter vs legacy parser shadow comparison mode
+- **MCP_SKILLS** — auto-discovers and registers skill commands from MCP server `skill://` resources
+- **REACTIVE_COMPACT** — auto-triggers context compression on 413/overload errors
+- **REVIEW_ARTIFACT** — `/review` code review skill + ReviewArtifact tool
 
 ### Infrastructure
 
-- 重写 `src/services/compact/cachedMicrocompact.ts`（从 stub 到 150+ 行完整实现）
-- 新增 `src/services/compact/cachedMCConfig.ts` — 同步配置模块
-- 新增 `CACHE_EDITING_BETA_HEADER` 到 `src/constants/betas.ts`
-- 新增 `src/skills/mcpSkills.ts`、`src/services/compact/reactiveCompact.ts`
-- 新增 `src/tools/ReviewArtifactTool/`、`src/skills/bundled/hunter.ts`
-- 累计已开启 40/87 个 feature flags
+- Rewrote `src/services/compact/cachedMicrocompact.ts` (from stub to 150+ line full implementation)
+- Added `src/services/compact/cachedMCConfig.ts` — synchronous config module
+- Added `CACHE_EDITING_BETA_HEADER` to `src/constants/betas.ts`
+- Added `src/skills/mcpSkills.ts`, `src/services/compact/reactiveCompact.ts`
+- Added `src/tools/ReviewArtifactTool/`, `src/skills/bundled/hunter.ts`
+- Cumulative 40/87 feature flags enabled
 
 ## [1.0.5] - 2026-04-02
 
 ### New Features
 
-- **AGENT_TRIGGERS** — `/loop` cron 调度命令，CronCreate/Delete/List 工具，本地定时任务引擎
-- **TREE_SITTER_BASH** — 纯 TypeScript bash AST 解析器，用于命令安全分析
-- **TREE_SITTER_BASH_SHADOW** — tree-sitter 与 legacy 解析器的 shadow 对比模式
-- **MCP_SKILLS** — 从 MCP 服务器的 `skill://` 资源自动发现并注册技能命令
-- **REACTIVE_COMPACT** — 413/过载错误时自动触发上下文压缩
-- **REVIEW_ARTIFACT** — `/review` 代码审查技能 + ReviewArtifact 工具 + 权限 UI
+- **AGENT_TRIGGERS** — `/loop` cron scheduling command, CronCreate/Delete/List tools, local scheduled task engine
+- **TREE_SITTER_BASH** — pure TypeScript bash AST parser, used for command safety analysis
+- **TREE_SITTER_BASH_SHADOW** — tree-sitter vs legacy parser shadow comparison mode
+- **MCP_SKILLS** — auto-discovers and registers skill commands from MCP server `skill://` resources
+- **REACTIVE_COMPACT** — auto-triggers context compression on 413/overload errors
+- **REVIEW_ARTIFACT** — `/review` code review skill + ReviewArtifact tool + permission UI
 
 ### Infrastructure
 
-- 新增 `src/skills/mcpSkills.ts` — MCP 技能发现模块
-- 新增 `src/services/compact/reactiveCompact.ts` — 响应式压缩策略
-- 新增 `src/tools/ReviewArtifactTool/` — 代码审查工具
-- 新增 `src/components/permissions/ReviewArtifactPermissionRequest/` — 审查权限 UI
-- 新增 `src/skills/bundled/hunter.ts` — /review 技能注册
-- 累计已开启 39/87 个 feature flags
+- Added `src/skills/mcpSkills.ts` — MCP skill discovery module
+- Added `src/services/compact/reactiveCompact.ts` — reactive compression strategy
+- Added `src/tools/ReviewArtifactTool/` — code review tool
+- Added `src/components/permissions/ReviewArtifactPermissionRequest/` — review permission UI
+- Added `src/skills/bundled/hunter.ts` — /review skill registration
+- Cumulative 39/87 feature flags enabled
 
 ## [1.0.4] - 2026-04-02
 
 ### New Features
 
-- **ULTRAPLAN** — `/ultraplan` 结构化多步骤规划命令
-- **VERIFICATION_AGENT** — 批量任务完成后自动派生验证 Agent
-- **AUTO_THEME** — 通过 OSC 11 查询终端背景色自动切换深色/浅色主题
-- **AGENT_MEMORY_SNAPSHOT** — Agent 记忆快照
-- **FILE_PERSISTENCE** — 文件持久化追踪
-- **POWERSHELL_AUTO_MODE** — PowerShell 自动模式
-- **HARD_FAIL** — 严格错误模式
-- **SLOW_OPERATION_LOGGING** — 慢操作日志
-- **UNATTENDED_RETRY** — 无人值守重试
-- **ALLOW_TEST_VERSIONS** — 允许测试版本
+- **ULTRAPLAN** — `/ultraplan` structured multi-step planning command
+- **VERIFICATION_AGENT** — auto-spawns verification Agent after batch task completion
+- **AUTO_THEME** — auto-switches dark/light theme by querying terminal background color via OSC 11
+- **AGENT_MEMORY_SNAPSHOT** — Agent memory snapshots
+- **FILE_PERSISTENCE** — file persistence tracking
+- **POWERSHELL_AUTO_MODE** — PowerShell auto mode
+- **HARD_FAIL** — strict error mode
+- **SLOW_OPERATION_LOGGING** — slow operation logging
+- **UNATTENDED_RETRY** — unattended retry
+- **ALLOW_TEST_VERSIONS** — allow test versions
 
 ### Infrastructure
 
-- 新增 `src/utils/systemThemeWatcher.ts` — OSC 11 终端主题检测与实时监听
-- 累计已开启 33/87 个 feature flags
+- Added `src/utils/systemThemeWatcher.ts` — OSC 11 terminal theme detection and real-time monitoring
+- Cumulative 33/87 feature flags enabled
 
 ## [1.0.3] - 2026-04-02
 
 ### New Features
 
-- **COMMIT_ATTRIBUTION** — 追踪每次 commit 中 Claude 的贡献比例，PR 描述自动附加归因 trailer
-- **AWAY_SUMMARY** — 用户离开后返回时显示期间发生的摘要
-- **COMPACTION_REMINDERS** — 上下文压缩时的效率提醒
-- **HOOK_PROMPTS** — 允许 hooks 向用户请求输入
-- **BASH_CLASSIFIER** — Shell 命令安全分类器
-- **EXTRACT_MEMORIES** — 自动从对话中提取持久化记忆
-- **SHOT_STATS** — 会话统计面板
-- **PROMPT_CACHE_BREAK_DETECTION** — 检测 prompt cache 失效
-- **ULTRATHINK** — 深度思考模式
-- **MCP_RICH_OUTPUT** — MCP 工具富文本输出
-- **CONNECTOR_TEXT** — 连接器文本增强
-- **NATIVE_CLIPBOARD_IMAGE** — 原生剪贴板图片支持
-- **NEW_INIT** — 改进的项目初始化流程
-- **DUMP_SYSTEM_PROMPT** — 调试用 system prompt 导出
-- **BREAK_CACHE_COMMAND** — `/break-cache` 命令
-- **BUILTIN_EXPLORE_PLAN_AGENTS** — 内置 Explore/Plan Agent
+- **COMMIT_ATTRIBUTION** — tracks Claude's contribution ratio per commit, PR description auto-appends attribution trailer
+- **AWAY_SUMMARY** — displays summary of what happened while user was away
+- **COMPACTION_REMINDERS** — efficiency reminders during context compaction
+- **HOOK_PROMPTS** — allows hooks to request user input
+- **BASH_CLASSIFIER** — shell command safety classifier
+- **EXTRACT_MEMORIES** — auto-extracts persistent memories from conversations
+- **SHOT_STATS** — session statistics panel
+- **PROMPT_CACHE_BREAK_DETECTION** — detects prompt cache invalidation
+- **ULTRATHINK** — deep thinking mode
+- **MCP_RICH_OUTPUT** — MCP tool rich text output
+- **CONNECTOR_TEXT** — connector text enhancement
+- **NATIVE_CLIPBOARD_IMAGE** — native clipboard image support
+- **NEW_INIT** — improved project initialization flow
+- **DUMP_SYSTEM_PROMPT** — debug system prompt export
+- **BREAK_CACHE_COMMAND** — `/break-cache` command
+- **BUILTIN_EXPLORE_PLAN_AGENTS** — built-in Explore/Plan Agents
 
 ### Infrastructure
 
-- 新增 `src/utils/attributionHooks.ts`、`attributionTrailer.ts`、`postCommitAttribution.ts` 三个归因模块
+- Added `src/utils/attributionHooks.ts`, `attributionTrailer.ts`, `postCommitAttribution.ts` — three attribution modules
 
 ## [1.0.2] - 2026-04-02
 
 ### New Features
 
-- **QUICK_SEARCH** — 全屏模式下 `Ctrl+P` 快速打开文件，`Ctrl+Shift+F` 全局符号/内容搜索
-- **MESSAGE_ACTIONS** — 全屏模式下对消息进行复制、编辑、重试等操作
-- **FORK_SUBAGENT** — `/fork <directive>` 会话分叉，子 Agent 继承完整对话上下文并行执行任务
-- **HISTORY_PICKER** — `Ctrl+R` 弹出历史搜索对话框，替代原有的内联搜索
+- **QUICK_SEARCH** — `Ctrl+P` quick file open in fullscreen mode, `Ctrl+Shift+F` global symbol/content search
+- **MESSAGE_ACTIONS** — copy, edit, retry and other actions on messages in fullscreen mode
+- **FORK_SUBAGENT** — `/fork <directive>` session fork, child Agent inherits full conversation context and executes tasks in parallel
+- **HISTORY_PICKER** — `Ctrl+R` opens history search dialog, replacing the previous inline search
 
 ### Infrastructure
 
-- 新增 `src/commands/fork/` 命令模块和 `UserForkBoilerplateMessage` UI 组件
+- Added `src/commands/fork/` command module and `UserForkBoilerplateMessage` UI component
 
 ## [1.0.1] - 2026-04-02
 
 ### New Features
 
-- **BUDDY 虚拟宠物伴侣** — `/buddy hatch` 孵化专属编程宠物，18 种物种、5 种稀有度、随机属性
-  - `/buddy hatch` 孵化 · `/buddy pet` 摸摸 · `/buddy stats` 属性 · `/buddy release` 放生
-  - 宠物根据对话上下文用可爱中文冒泡评论，支持多语言自动切换
-  - 放生后重新孵化会得到不同的宠物（generation 计数器）
-- **TOKEN_BUDGET** — 提示中使用 `+500k` 或 `use 2M tokens` 设定 token 预算，自动追踪用量
-- **STREAMLINED_OUTPUT** — 环境变量 `CLAUDE_CODE_STREAMLINED_OUTPUT=true` 启用精简输出
+- **BUDDY virtual pet companion** — `/buddy hatch` hatches an exclusive coding pet, 18 species, 5 rarities, random attributes
+  - `/buddy hatch` hatch · `/buddy pet` pet · `/buddy stats` stats · `/buddy release` release
+  - Pet comments in cute language based on conversation context, supports multilingual auto-switching
+  - Re-hatching after release gives a different pet (generation counter)
+- **TOKEN_BUDGET** — use `+500k` or `use 2M tokens` in prompts to set token budget, auto-tracks usage
+- **STREAMLINED_OUTPUT** — environment variable `CLAUDE_CODE_STREAMLINED_OUTPUT=true` enables streamlined output
 
 ### Fixes
 
-- **构建系统 Feature Flags 修复** — `scripts/build.ts` 现在正确读取 `bunfig.toml` 的 `[bundle.features]` 并传递给 `Bun.build()` API，此前所有 `feature()` 调用默认为 `false`
+- **Build system feature flags fix** — `scripts/build.ts` now correctly reads `bunfig.toml`'s `[bundle.features]` and passes them to the `Bun.build()` API; previously all `feature()` calls defaulted to `false`
 
 ### Infrastructure
 
-- 新增 `scripts/compile.ts` 替代裸 `bun build --compile`，确保编译二进制正确应用 feature flags
-- 新增 `src/buddy/companionObserver.ts` 上下文感知的宠物反应系统
-- 新增 `src/commands/buddy/` 完整命令模块
+- Added `scripts/compile.ts` replacing bare `bun build --compile`, ensuring compiled binary correctly applies feature flags
+- Added `src/buddy/companionObserver.ts` context-aware pet reaction system
+- Added `src/commands/buddy/` complete command module
 
 ## [1.0.0] - 2026-03-31
 
 - Initial release: LegnaCode CLI v1.0.0
-- 基于 Claude Code CLI 开源版本构建
-- 品牌适配与定制化改造
+- Built on the Claude Code CLI open-source edition
+- Brand adaptation and customization

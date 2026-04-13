@@ -1,301 +1,304 @@
 # LegnaCode CLI
+
+🌐 [中文文档](./README.zh-CN.md)
+
 <img width="1256" height="416" alt="image" src="https://github.com/user-attachments/assets/5e4717e6-3404-4901-9f5c-1c6462fb1c1a" />
 <img width="1072" height="874" alt="image" src="https://github.com/user-attachments/assets/819c39e8-9db6-4d8d-b911-13600c525422" />
 
-LegnaCode 是一个基于 Anthropic Claude 的智能终端编程助手，让你直接在命令行中与 AI 协作完成软件工程任务——编辑文件、执行命令、搜索代码、管理 Git 工作流等。
+LegnaCode is an intelligent terminal programming assistant powered by Anthropic Claude. It lets you collaborate with AI directly from the command line to accomplish software engineering tasks — editing files, running commands, searching code, managing Git workflows, and more.
 
-> 📊 **与 Claude Code 原版的详细对比** → [COMPARISON.md](./COMPARISON.md)
-
----
-
-## 更新日志
-
-详见 [CHANGELOG.md](./CHANGELOG.md)
-
-| 版本 | 日期 | 摘要 |
-|------|------|------|
-| [1.4.4](./CHANGELOG.md#144---2026-04-11) | 2026-04-11 | 状态提示改为 spinner 行显示（不污染对话），新增功能对比文档 |
-| [1.4.3](./CHANGELOG.md#143---2026-04-11) | 2026-04-11 | mempalace 记忆架构融合（DrawerStore + TF-IDF 向量搜索 + 4 层记忆栈 + 时序知识图谱），token 节省 ~88% |
-| [1.4.2](./CHANGELOG.md#142---2026-04-11) | 2026-04-11 | 进度反馈增强（消除 8 个静默代码路径），verbose 默认开启，Token/Timer 即时显示，中断原因可见 |
-| [1.4.0](./CHANGELOG.md#140---2026-04-11) | 2026-04-11 | MiniMax 深度原生兼容（6 个多模态工具），RPC 子进程工具执行，Memory Provider 插件系统，智能模型路由，自主技能检测，上下文压缩增强，跨会话记忆搜索 |
-| [1.3.7](./CHANGELOG.md#137---2026-04-09) | 2026-04-09 | Resume 会话检测修复，Interrupted 诊断日志，后台任务状态可见性增强 |
-| [1.3.6](./CHANGELOG.md#136---2026-04-09) | 2026-04-09 | 修复 Windows 路径分隔符导致 Edit 工具 "File has been unexpectedly modified" 误报 |
-| [1.3.5](./CHANGELOG.md#135---2026-04-07) | 2026-04-07 | 修复 SessionStart hook 报错，Windows alt-screen 渲染深度修复（消除 fullReset 闪烁） |
-| [1.3.4](./CHANGELOG.md#134---2026-04-07) | 2026-04-07 | OML Superpowers 工程纪律（/verify /tdd /debug /brainstorm 等 11 个 skill），SessionStart 技能引导 |
-| [1.3.3](./CHANGELOG.md#133---2026-04-07) | 2026-04-07 | OML 智能编排层内置（magic keywords + 19 agent skills），Windows Terminal fullscreen 修复 |
-| [1.3.2](./CHANGELOG.md#132---2026-04-07) | 2026-04-07 | 禁用 History Snip，修复 Windows Terminal 流式文本渲染 |
-| [1.3.1](./CHANGELOG.md#131---2026-04-06) | 2026-04-06 | 修复 1M 模型被过早 snip 的问题，snip 阈值感知 context window 大小 |
-| [1.3.0](./CHANGELOG.md#130---2026-04-04) | 2026-04-04 | 项目本地化存储：会话/skills/memory/rules 下沉到 `<project>/.legna/`，全局迁移 `~/.claude/` → `~/.legna/`，`legna migrate` 命令 |
-| [1.2.1](./CHANGELOG.md#121---2026-04-04) | 2026-04-04 | 模型适配器层：MiMo、GLM、DeepSeek、Kimi、MiniMax 五大提供商深度兼容 |
-| [1.2.0](./CHANGELOG.md#120---2026-04-03) | 2026-04-03 | 会话按项目分组、resume 带 cd、迁移支持会话记录、Windows 原生编译 |
-| [1.1.9](./CHANGELOG.md#119---2026-04-03) | 2026-04-03 | postinstall 自动安装平台包，修复 Windows/镜像源 optionalDependencies 失效 |
-| [1.1.8](./CHANGELOG.md#118---2026-04-03) | 2026-04-03 | bin wrapper 自动安装缺失平台包，修复 Windows npm 全局安装问题 |
-| [1.1.7](./CHANGELOG.md#117---2026-04-03) | 2026-04-03 | 彻底修复 Windows external module 报错，清空 external 列表 |
-| [1.1.6](./CHANGELOG.md#116---2026-04-03) | 2026-04-03 | 修复 Windows external module 报错、全平台发版流程自动化、版本号统一 |
-| [1.1.5](./CHANGELOG.md#115---2026-04-03) | 2026-04-03 | WebUI 管理面板 (`legna admin`)、双目录管理、配置迁移、npm 全平台发布 |
-| [1.0.9](./CHANGELOG.md#109---2026-04-03) | 2026-04-03 | i18n 多语言补全、内置精美状态栏、配置自动迁移 |
-| [1.0.8](./CHANGELOG.md#108---2026-04-02) | 2026-04-02 | MONITOR_TOOL、WORKFLOW_SCRIPTS、HISTORY_SNIP，3 个重量级子系统，累计 47 flags |
-| [1.0.7](./CHANGELOG.md#107---2026-04-02) | 2026-04-02 | TERMINAL_PANEL、WEB_BROWSER_TOOL、TEMPLATES、BG_SESSIONS，累计 44 flags |
-| [1.0.6](./CHANGELOG.md#106---2026-04-02) | 2026-04-02 | CACHED_MICROCOMPACT、AGENT_TRIGGERS、TREE_SITTER_BASH 等 7 个功能，累计 40 flags |
-| [1.0.5](./CHANGELOG.md#105---2026-04-02) | 2026-04-02 | AGENT_TRIGGERS、MCP_SKILLS、REACTIVE_COMPACT、REVIEW_ARTIFACT 等 6 个功能，累计 39 flags |
-| [1.0.4](./CHANGELOG.md#104---2026-04-02) | 2026-04-02 | ULTRAPLAN、VERIFICATION_AGENT、AUTO_THEME 等 10 个功能，累计 33 flags |
-| [1.0.3](./CHANGELOG.md#103---2026-04-02) | 2026-04-02 | COMMIT_ATTRIBUTION、BASH_CLASSIFIER、EXTRACT_MEMORIES 等 16 个功能 |
-| [1.0.2](./CHANGELOG.md#102---2026-04-02) | 2026-04-02 | QUICK_SEARCH、MESSAGE_ACTIONS、FORK_SUBAGENT、HISTORY_PICKER |
-| [1.0.1](./CHANGELOG.md#101---2026-04-02) | 2026-04-02 | BUDDY 虚拟宠物、TOKEN_BUDGET、构建系统修复 |
-| [1.0.0](./CHANGELOG.md#100---2026-03-31) | 2026-03-31 | 初始发布 |
+> 📊 **Detailed comparison with the original Claude Code** → [COMPARISON.md](./COMPARISON.md)
 
 ---
 
-## 致谢
+## Changelog
 
-本项目基于 [Claude Code CLI](https://github.com/anthropics/claude-code) 的公开源码构建。
+See [CHANGELOG.md](./CHANGELOG.md) for full details.
 
-Claude Code 是 Anthropic 团队打造的一款出色的终端 AI 编程工具，它开创性地将大语言模型与命令行开发工作流深度融合，提供了文件编辑、代码搜索、Shell 执行、MCP 协议等丰富能力。LegnaCode 站在这个优秀项目的肩膀上，进行了定制化改造和品牌适配。
-
-感谢 Anthropic 团队将 Claude Code CLI 开源，让社区能够在此基础上探索更多可能性。
+| Version | Date | Summary |
+|---------|------|---------|
+| [1.4.4](./CHANGELOG.md#144---2026-04-11) | 2026-04-11 | Status messages now display as spinner lines (no longer pollute the conversation); added feature comparison doc |
+| [1.4.3](./CHANGELOG.md#143---2026-04-11) | 2026-04-11 | Mempalace memory architecture (DrawerStore + TF-IDF vector search + 4-layer memory stack + temporal knowledge graph); ~88% token savings |
+| [1.4.2](./CHANGELOG.md#142---2026-04-11) | 2026-04-11 | Progress feedback enhancements (eliminated 8 silent code paths); verbose enabled by default; instant Token/Timer display; visible interruption reasons |
+| [1.4.0](./CHANGELOG.md#140---2026-04-11) | 2026-04-11 | Deep native MiniMax compatibility (6 multimodal tools); RPC subprocess tool execution; Memory Provider plugin system; smart model routing; autonomous skill detection; context compression enhancements; cross-session memory search |
+| [1.3.7](./CHANGELOG.md#137---2026-04-09) | 2026-04-09 | Resume session detection fix; Interrupted diagnostic logging; background task status visibility improvements |
+| [1.3.6](./CHANGELOG.md#136---2026-04-09) | 2026-04-09 | Fixed Windows path separator causing false "File has been unexpectedly modified" errors in the Edit tool |
+| [1.3.5](./CHANGELOG.md#135---2026-04-07) | 2026-04-07 | Fixed SessionStart hook errors; deep fix for Windows alt-screen rendering (eliminated fullReset flicker) |
+| [1.3.4](./CHANGELOG.md#134---2026-04-07) | 2026-04-07 | OML Superpowers engineering discipline (11 skills: /verify /tdd /debug /brainstorm etc.); SessionStart skill guidance |
+| [1.3.3](./CHANGELOG.md#133---2026-04-07) | 2026-04-07 | Built-in OML smart orchestration layer (magic keywords + 19 agent skills); Windows Terminal fullscreen fix |
+| [1.3.2](./CHANGELOG.md#132---2026-04-07) | 2026-04-07 | Disabled History Snip; fixed Windows Terminal streaming text rendering |
+| [1.3.1](./CHANGELOG.md#131---2026-04-06) | 2026-04-06 | Fixed 1M model being snipped prematurely; snip threshold now adapts to context window size |
+| [1.3.0](./CHANGELOG.md#130---2026-04-04) | 2026-04-04 | Project-local storage: sessions/skills/memory/rules moved to `<project>/.legna/`; global migration `~/.claude/` → `~/.legna/`; `legna migrate` command |
+| [1.2.1](./CHANGELOG.md#121---2026-04-04) | 2026-04-04 | Model adapter layer: deep compatibility for MiMo, GLM, DeepSeek, Kimi, and MiniMax providers |
+| [1.2.0](./CHANGELOG.md#120---2026-04-03) | 2026-04-03 | Sessions grouped by project; resume with cd; migration supports session records; native Windows compilation |
+| [1.1.9](./CHANGELOG.md#119---2026-04-03) | 2026-04-03 | postinstall auto-installs platform package; fixed optionalDependencies failure on Windows/mirror registries |
+| [1.1.8](./CHANGELOG.md#118---2026-04-03) | 2026-04-03 | Bin wrapper auto-installs missing platform package; fixed Windows npm global install issues |
+| [1.1.7](./CHANGELOG.md#117---2026-04-03) | 2026-04-03 | Fully fixed Windows external module errors; cleared external list |
+| [1.1.6](./CHANGELOG.md#116---2026-04-03) | 2026-04-03 | Fixed Windows external module errors; automated cross-platform release workflow; unified version numbers |
+| [1.1.5](./CHANGELOG.md#115---2026-04-03) | 2026-04-03 | WebUI admin panel (`legna admin`); dual-directory management; config migration; npm cross-platform publishing |
+| [1.0.9](./CHANGELOG.md#109---2026-04-03) | 2026-04-03 | i18n multilingual completion; built-in styled status bar; automatic config migration |
+| [1.0.8](./CHANGELOG.md#108---2026-04-02) | 2026-04-02 | MONITOR_TOOL, WORKFLOW_SCRIPTS, HISTORY_SNIP — 3 major subsystems, 47 flags total |
+| [1.0.7](./CHANGELOG.md#107---2026-04-02) | 2026-04-02 | TERMINAL_PANEL, WEB_BROWSER_TOOL, TEMPLATES, BG_SESSIONS — 44 flags total |
+| [1.0.6](./CHANGELOG.md#106---2026-04-02) | 2026-04-02 | CACHED_MICROCOMPACT, AGENT_TRIGGERS, TREE_SITTER_BASH and 7 more features — 40 flags total |
+| [1.0.5](./CHANGELOG.md#105---2026-04-02) | 2026-04-02 | AGENT_TRIGGERS, MCP_SKILLS, REACTIVE_COMPACT, REVIEW_ARTIFACT and 6 more features — 39 flags total |
+| [1.0.4](./CHANGELOG.md#104---2026-04-02) | 2026-04-02 | ULTRAPLAN, VERIFICATION_AGENT, AUTO_THEME and 10 more features — 33 flags total |
+| [1.0.3](./CHANGELOG.md#103---2026-04-02) | 2026-04-02 | COMMIT_ATTRIBUTION, BASH_CLASSIFIER, EXTRACT_MEMORIES and 16 more features |
+| [1.0.2](./CHANGELOG.md#102---2026-04-02) | 2026-04-02 | QUICK_SEARCH, MESSAGE_ACTIONS, FORK_SUBAGENT, HISTORY_PICKER |
+| [1.0.1](./CHANGELOG.md#101---2026-04-02) | 2026-04-02 | BUDDY virtual pet, TOKEN_BUDGET, build system fixes |
+| [1.0.0](./CHANGELOG.md#100---2026-03-31) | 2026-03-31 | Initial release |
 
 ---
 
-## 特性
+## Acknowledgments
 
-- **MiniMax 深度原生兼容** — 使用 MiniMax 模型时自动注册 6 个多模态工具（图像/视频/语音/音乐/搜索/视觉），`/auth-minimax` 配置 API key
-- **终端原生体验** — 基于 React + Ink 构建的现代终端 UI，支持语法高亮、结构化 Diff 展示
-- **45+ 内置工具** — 文件读写、代码搜索（Glob/Grep）、Shell 执行、Web 抓取、Jupyter Notebook 编辑等
-- **RPC 子进程工具执行** — AI 生成的脚本通过 Unix Domain Socket 回调 LegnaCode 工具，多步操作压缩为一次推理
-- **Memory Provider 插件系统** — 可插拔的记忆后端，内置文件系统 provider，支持外部 provider 扩展
-- **智能模型路由** — 基于 prompt 复杂度自动路由到 fast/default/strong 模型层
-- **自主技能检测** — 检测重复工具调用模式，提示保存为可复用技能
-- **上下文压缩增强** — 工具输出预剪枝 + 预算压力注入，长对话更高效
-- **跨会话记忆搜索** — `/recall` 命令搜索历史会话，关键词匹配 + 相关性排序
-- **多层安全防护** — Bash/Zsh/PowerShell 命令安全检测、沙箱机制、权限分级控制
-- **多云 AI 后端** — 支持 Anthropic API、AWS Bedrock、GCP Vertex、Azure
-- **MCP 协议支持** — 通过 Model Context Protocol 连接外部工具和数据源
-- **多 Agent 协作** — 支持子 Agent 派生、团队协作、任务编排
-- **插件与技能系统** — 可扩展的插件架构和可复用的技能工作流
-- **持久化记忆** — 跨会话的上下文记忆系统
-- **纯 TS 语法高亮** — 内置基于 highlight.js 的纯 TypeScript 语法高亮实现，无需原生模块依赖
-- **WebUI 管理面板** — `legna admin` 启动浏览器管理面板，可视化编辑配置、切换配置文件、浏览会话记录、迁移数据
-- **`legna migrate` 命令** — 手动迁移 `~/.claude/` 数据到项目本地 `.legna/`，支持 `--global`/`--sessions`/`--dry-run`
+This project is built upon the open-source codebase of [Claude Code CLI](https://github.com/anthropics/claude-code).
+
+Claude Code is an outstanding terminal AI programming tool created by the Anthropic team. It pioneered the deep integration of large language models with command-line development workflows, providing rich capabilities including file editing, code search, shell execution, and the MCP protocol. LegnaCode stands on the shoulders of this excellent project, with customizations and brand adaptations.
+
+Thanks to the Anthropic team for open-sourcing Claude Code CLI, enabling the community to explore further possibilities on this foundation.
 
 ---
 
-## 环境要求
+## Features
 
-| 依赖 | 版本 |
-|------|------|
+- **Deep Native MiniMax Compatibility** — Automatically registers 6 multimodal tools (image/video/speech/music/search/vision) when using MiniMax models; `/auth-minimax` to configure API key
+- **Terminal-Native Experience** — Modern terminal UI built with React + Ink, with syntax highlighting and structured diff display
+- **45+ Built-in Tools** — File read/write, code search (Glob/Grep), shell execution, web fetching, Jupyter Notebook editing, and more
+- **RPC Subprocess Tool Execution** — AI-generated scripts call back to LegnaCode tools via Unix Domain Socket, compressing multi-step operations into a single inference
+- **Memory Provider Plugin System** — Pluggable memory backends with a built-in filesystem provider; supports external provider extensions
+- **Smart Model Routing** — Automatically routes to fast/default/strong model tiers based on prompt complexity
+- **Autonomous Skill Detection** — Detects repetitive tool call patterns and suggests saving them as reusable skills
+- **Context Compression Enhancements** — Tool output pre-pruning + budget pressure injection for more efficient long conversations
+- **Cross-Session Memory Search** — `/recall` command searches historical sessions with keyword matching + relevance ranking
+- **Multi-Layer Security** — Bash/Zsh/PowerShell command safety detection, sandboxing, and tiered permission controls
+- **Multi-Cloud AI Backends** — Supports Anthropic API, AWS Bedrock, GCP Vertex, and Azure
+- **MCP Protocol Support** — Connect external tools and data sources via Model Context Protocol
+- **Multi-Agent Collaboration** — Sub-agent spawning, team collaboration, and task orchestration
+- **Plugin & Skill System** — Extensible plugin architecture and reusable skill workflows
+- **Persistent Memory** — Cross-session context memory system
+- **Pure TS Syntax Highlighting** — Built-in highlight.js-based pure TypeScript syntax highlighting with no native module dependencies
+- **WebUI Admin Panel** — `legna admin` launches a browser-based admin panel for visual config editing, profile switching, session browsing, and data migration
+- **`legna migrate` Command** — Manually migrate `~/.claude/` data to project-local `.legna/`; supports `--global`/`--sessions`/`--dry-run`
+
+---
+
+## Requirements
+
+| Dependency | Version |
+|------------|---------|
 | [Bun](https://bun.sh) | >= 1.2.0 |
-| Node.js | >= 18（可选） |
+| Node.js | >= 18 (optional) |
 | Git | >= 2.0 |
-| 操作系统 | macOS / Linux |
+| OS | macOS / Linux |
 
 ---
 
-## 安装
+## Installation
 
-### 方式一：npm 全局安装（推荐）
+### Option 1: npm Global Install (Recommended)
 
 ```bash
 npm install -g @legna-lnc/legnacode
 ```
 
-如果使用镜像源（如 cnpm、淘宝源）安装失败或版本未同步，可指定官方源安装：
+If using a mirror registry (e.g., cnpm, Taobao mirror) and the install fails or the version is out of sync, you can specify the official registry:
 
 ```bash
 npm install -g @legna-lnc/legnacode --registry=https://registry.npmjs.org
 ```
 
-安装后即可在任意目录使用 `legna` 命令。会自动下载当前平台的预编译二进制（支持 macOS arm64/x64、Linux x64/arm64、Windows x64）。
+Once installed, the `legna` command is available in any directory. It automatically downloads the precompiled binary for your platform (supports macOS arm64/x64, Linux x64/arm64, Windows x64).
 
 ```bash
-# 验证安装
+# Verify installation
 legna --version
 
-# 更新到最新版
+# Update to the latest version
 npm update -g @legna-lnc/legnacode
 ```
 
-### 方式二：从源码编译
+### Option 2: Build from Source
 
 ```bash
 git clone https://github.com/LegnaOS/LegnaCode-cli.git
 cd LegnaCode-cli
 bun install
 bun run compile
-# 编译产物为 ./legna，可移动到 PATH 中
+# The compiled binary is ./legna — move it to your PATH
 ```
 
 ---
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 交互模式
+# Interactive mode
 legna
 
-# 非交互模式（直接提问）
-legna -p "解释这段代码的作用"
+# Non-interactive mode (ask directly)
+legna -p "Explain what this code does"
 
-# 继续上次会话
+# Continue the last session
 legna --continue
 
-# 查看版本
+# Check version
 legna --version
 ```
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 ├── src/
-│   ├── entrypoints/       # 入口文件（cli.tsx）
-│   ├── server/            # HTTP 服务器（admin WebUI）
-│   ├── components/        # React/Ink 终端 UI 组件
-│   ├── tools/             # 内置工具（Bash、文件操作、搜索等）
-│   ├── services/          # API 调用、MCP 客户端、分析等
-│   ├── native-ts/         # 纯 TS 实现的原生模块替代（语法高亮等）
-│   ├── utils/             # 工具函数
+│   ├── entrypoints/       # Entry point (cli.tsx)
+│   ├── server/            # HTTP server (admin WebUI)
+│   ├── components/        # React/Ink terminal UI components
+│   ├── tools/             # Built-in tools (Bash, file ops, search, etc.)
+│   ├── services/          # API calls, MCP client, analytics, etc.
+│   ├── native-ts/         # Pure TS replacements for native modules (syntax highlighting, etc.)
+│   ├── utils/             # Utility functions
 │   └── hooks/             # React hooks
-├── webui/                 # Admin WebUI 前端（React + Vite + Tailwind）
-├── stubs/                 # 原生模块的 stub（编译时外部依赖占位）
-├── scripts/               # 构建脚本
-├── bunfig.toml            # Bun 构建配置（Feature Flags、宏定义）
+├── webui/                 # Admin WebUI frontend (React + Vite + Tailwind)
+├── stubs/                 # Native module stubs (compile-time external dependency placeholders)
+├── scripts/               # Build scripts
+├── bunfig.toml            # Bun build config (Feature Flags, macro definitions)
 └── package.json
 ```
 
 ---
 
-## 构建说明
+## Build
 
-LegnaCode 使用 Bun 的 bundler 进行构建，支持两种模式：
+LegnaCode uses Bun's bundler for building, with two modes:
 
-- `bun run build` — 构建到 `dist/` 目录，适合开发调试
-- `bun run compile` — 编译为独立二进制 `legna`，无需 Bun 运行时
+- `bun run build` — Build to `dist/` directory, suitable for development and debugging
+- `bun run compile` — Compile to a standalone `legna` binary, no Bun runtime required
 
 ### Admin WebUI
 
-`legna admin` 启动一个浏览器管理面板，让你通过 Web 界面管理所有配置，无需手动编辑 JSON 文件。
+`legna admin` launches a browser-based admin panel that lets you manage all configuration through a web interface — no manual JSON editing needed.
 
 ```bash
-# 启动管理面板（默认端口 3456，自动打开浏览器）
+# Launch admin panel (default port 3456, auto-opens browser)
 legna admin
 
-# 自定义端口
+# Custom port
 legna admin 8080
 ```
 
-面板顶部通过 Tab 切换管理对象：**Claude** (`~/.claude/`) 和 **LegnaCode** (`~/.legna/`)，每个 scope 下提供四个功能面板：
+Tabs at the top of the panel switch between management scopes: **Claude** (`~/.claude/`) and **LegnaCode** (`~/.legna/`). Each scope provides four panels:
 
-| 面板 | 功能 |
-|------|------|
-| 配置编辑 | 可视化编辑 settings.json：API 端点、API Key、模型映射（Opus/Sonnet/Haiku）、超时、权限模式、语言等 |
-| 配置文件 | 列出所有 settings*.json，显示 baseUrl/model，一键切换激活配置 |
-| 会话记录 | 浏览历史会话，显示项目路径、slug、时间、prompt 数量，一键复制 `legna --resume` 命令 |
-| 配置迁移 | Claude ↔ LegnaCode 双向迁移，支持全量或选择性字段迁移，迁移前预览 diff |
+| Panel | Function |
+|-------|----------|
+| Config Editor | Visual editing of settings.json: API endpoint, API key, model mapping (Opus/Sonnet/Haiku), timeout, permission mode, language, etc. |
+| Config Profiles | Lists all settings*.json files, shows baseUrl/model, one-click to switch active profile |
+| Session History | Browse past sessions showing project path, slug, timestamp, prompt count; one-click copy `legna --resume` command |
+| Config Migration | Bidirectional Claude ↔ LegnaCode migration; supports full or selective field migration with pre-migration diff preview |
 
-> 从源码运行时需要先构建前端：`cd webui && npm install && npm run build`，然后 `bun run src/server/admin.ts`。npm 全局安装的版本已包含预构建的 WebUI。
+> When running from source, build the frontend first: `cd webui && npm install && npm run build`, then `bun run src/server/admin.ts`. The npm global install version includes the pre-built WebUI.
 
-构建时通过 `bunfig.toml` 中的 `[bundle.define]` 注入版本号等编译时常量，通过 `[bundle.features]` 控制 Feature Flags 实现死代码消除。
+Build-time constants such as version numbers are injected via `[bundle.define]` in `bunfig.toml`. Feature Flags in `[bundle.features]` enable dead code elimination.
 
-原生模块（`color-diff-napi`、`modifiers-napi` 等）标记为 `external`，运行时从 `stubs/` 加载占位实现。语法高亮已切换为 `src/native-ts/color-diff/` 下的纯 TypeScript 实现，无需任何原生编译依赖。
+Native modules (`color-diff-napi`, `modifiers-napi`, etc.) are marked as `external` and load placeholder implementations from `stubs/` at runtime. Syntax highlighting has been switched to a pure TypeScript implementation under `src/native-ts/color-diff/`, requiring no native compilation dependencies.
 
 ---
 
-## 配置
+## Configuration
 
-LegnaCode 使用 `~/.legna/` 作为全局配置目录，项目级数据存储在 `<project>/.legna/`：
+LegnaCode uses `~/.legna/` as the global config directory, with project-level data stored in `<project>/.legna/`:
 
-- `~/.legna/settings.json` — 全局用户设置
-- `~/.legna/.credentials.json` — 认证凭据
-- `<project>/.legna/sessions/` — 项目会话记录（JSONL）
-- `<project>/.legna/skills/` — 项目技能
-- `<project>/.legna/rules/` — 项目规则
-- `<project>/.legna/settings.json` — 项目级设置
-- `LEGNA.md` — 项目指令文件，AI 会自动读取并遵循
+- `~/.legna/settings.json` — Global user settings
+- `~/.legna/.credentials.json` — Authentication credentials
+- `<project>/.legna/sessions/` — Project session records (JSONL)
+- `<project>/.legna/skills/` — Project skills
+- `<project>/.legna/rules/` — Project rules
+- `<project>/.legna/settings.json` — Project-level settings
+- `LEGNA.md` — Project instruction file, automatically read and followed by the AI
 
-> 首次启动时自动从 `~/.claude/` 单向迁移全局数据到 `~/.legna/`（不覆盖已有文件）。旧的 `~/.claude/projects/` 会话通过 fallback 链自动读取，无需手动迁移。设置 `LEGNA_NO_CONFIG_SYNC=1` 可禁止自动迁移。
+> On first launch, global data is automatically migrated one-way from `~/.claude/` to `~/.legna/` (existing files are not overwritten). Legacy sessions under `~/.claude/projects/` are read automatically via a fallback chain — no manual migration needed. Set `LEGNA_NO_CONFIG_SYNC=1` to disable automatic migration.
 
 ### legna migrate
 
-手动迁移数据：
+Manually migrate data:
 
 ```bash
-# 迁移全部（全局 + 当前项目会话）
+# Migrate everything (global + current project sessions)
 legna migrate
 
-# 仅迁移全局数据 ~/.claude/ → ~/.legna/
+# Migrate global data only: ~/.claude/ → ~/.legna/
 legna migrate --global
 
-# 仅迁移当前项目会话到本地 .legna/sessions/
+# Migrate current project sessions to local .legna/sessions/ only
 legna migrate --sessions
 
-# 预览模式（不实际移动文件）
+# Dry run (no files are actually moved)
 legna migrate --dry-run
 ```
 
-### 环境变量
+### Environment Variables
 
-| 变量 | 说明 |
-|------|------|
-| `ANTHROPIC_API_KEY` | Anthropic API 密钥 |
-| `CLAUDE_CODE_USE_BEDROCK` | 使用 AWS Bedrock 后端 |
-| `CLAUDE_CODE_USE_VERTEX` | 使用 GCP Vertex 后端 |
-| `CLAUDE_CODE_SYNTAX_HIGHLIGHT` | 设为 `0` 禁用语法高亮 |
-| `MINIMAX_API_KEY` | MiniMax API 密钥（启用多模态工具） |
-| `MINIMAX_REGION` | MiniMax 区域：`global`（默认）或 `cn` |
-| `MINIMAX_BASE_URL` | 自定义 MiniMax API 地址（覆盖区域默认值） |
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `CLAUDE_CODE_USE_BEDROCK` | Use AWS Bedrock backend |
+| `CLAUDE_CODE_USE_VERTEX` | Use GCP Vertex backend |
+| `CLAUDE_CODE_SYNTAX_HIGHLIGHT` | Set to `0` to disable syntax highlighting |
+| `MINIMAX_API_KEY` | MiniMax API key (enables multimodal tools) |
+| `MINIMAX_REGION` | MiniMax region: `global` (default) or `cn` |
+| `MINIMAX_BASE_URL` | Custom MiniMax API URL (overrides region default) |
 
 ---
 
-## MiniMax 多模态集成
+## MiniMax Multimodal Integration
 
-当使用 MiniMax 模型（`ANTHROPIC_BASE_URL` 指向 `api.minimax.io` 或 `api.minimaxi.com`）且配置了 `MINIMAX_API_KEY` 时，LegnaCode 自动注册 6 个多模态原生工具，AI 可以直接调用。
+When using a MiniMax model (`ANTHROPIC_BASE_URL` pointing to `api.minimax.io` or `api.minimaxi.com`) with `MINIMAX_API_KEY` configured, LegnaCode automatically registers 6 native multimodal tools that the AI can call directly.
 
-### 配置
+### Configuration
 
 ```bash
-# 方式一：环境变量
+# Option 1: Environment variables
 export MINIMAX_API_KEY="your-api-key"
-export MINIMAX_REGION="global"  # 或 "cn"
+export MINIMAX_REGION="global"  # or "cn"
 
-# 方式二：交互式配置（持久化到 ~/.legna/minimax-credentials.json）
+# Option 2: Interactive configuration (persisted to ~/.legna/minimax-credentials.json)
 legna
 > /auth-minimax your-api-key
 ```
 
-API key 获取：[MiniMax 国际站](https://platform.minimax.io) 或 [MiniMax 国内站](https://platform.minimaxi.com)
+Get your API key: [MiniMax Global](https://platform.minimax.io) or [MiniMax China](https://platform.minimaxi.com)
 
-### 多模态工具
+### Multimodal Tools
 
-| 工具 | 功能 | 示例 |
-|------|------|------|
-| `MiniMaxImageGenerate` | 文字生成图像 | "生成一张赛博朋克风格的城市夜景" |
-| `MiniMaxVideoGenerate` | 文字/图像生成视频 | "把这张图片做成一段 5 秒的动画" |
-| `MiniMaxSpeechSynthesize` | 文字转语音 | "把这段文字转成语音朗读" |
-| `MiniMaxMusicGenerate` | 文字生成音乐 | "生成一段轻快的钢琴背景音乐" |
-| `MiniMaxVisionDescribe` | 图像理解分析 | "描述这张图片的内容" |
-| `MiniMaxWebSearch` | 网页搜索 | "搜索最新的 TypeScript 5.x 特性" |
+| Tool | Function | Example |
+|------|----------|---------|
+| `MiniMaxImageGenerate` | Text-to-image generation | "Generate a cyberpunk cityscape at night" |
+| `MiniMaxVideoGenerate` | Text/image-to-video generation | "Turn this image into a 5-second animation" |
+| `MiniMaxSpeechSynthesize` | Text-to-speech | "Convert this text to spoken audio" |
+| `MiniMaxMusicGenerate` | Text-to-music generation | "Generate an upbeat piano background track" |
+| `MiniMaxVisionDescribe` | Image understanding and analysis | "Describe the contents of this image" |
+| `MiniMaxWebSearch` | Web search | "Search for the latest TypeScript 5.x features" |
 
-工具仅在使用 MiniMax 模型时自动启用，不影响其他模型的工具列表。
+These tools are only enabled when using MiniMax models and do not affect the tool list for other models.
 
-### 多模态工作流
+### Multimodal Workflow
 
-AI 可以自动编排多个工具完成复杂任务：
+The AI can automatically orchestrate multiple tools to complete complex tasks:
 
 ```
-用户：帮我做一个项目宣传视频
+User: Help me create a promotional video for my project
 
-AI 自动编排：
-1. 分析项目 README，提取核心卖点
-2. MiniMaxImageGenerate → 生成关键帧图片
-3. MiniMaxVideoGenerate → 基于关键帧生成视频
-4. MiniMaxSpeechSynthesize → 生成旁白配音
-5. 返回所有生成资源的 URL
+AI auto-orchestrates:
+1. Analyze the project README, extract key selling points
+2. MiniMaxImageGenerate → Generate keyframe images
+3. MiniMaxVideoGenerate → Generate video from keyframes
+4. MiniMaxSpeechSynthesize → Generate narration voiceover
+5. Return URLs for all generated assets
 ```
 
-### Schema 导出
+### Schema Export
 
-MiniMax 工具的 schema 可以导出为 Anthropic 兼容格式，用于外部集成：
+MiniMax tool schemas can be exported in Anthropic-compatible format for external integration:
 
 ```typescript
 import { exportMiniMaxToolSchemasJSON } from './src/tools/MiniMaxTools/schemaExport.js'
@@ -304,14 +307,14 @@ console.log(exportMiniMaxToolSchemasJSON())
 
 ---
 
-## 许可证
+## License
 
-本项目遵循上游 Claude Code CLI 的开源许可协议。详见 [Claude Code CLI](https://github.com/anthropics/claude-code) 原始仓库。
+This project follows the open-source license of the upstream Claude Code CLI. See the [Claude Code CLI](https://github.com/anthropics/claude-code) original repository for details.
 
 ---
 
-## 相关链接
+## Links
 
-- [Claude Code CLI（上游项目）](https://github.com/anthropics/claude-code)
+- [Claude Code CLI (upstream project)](https://github.com/anthropics/claude-code)
 - [Anthropic](https://www.anthropic.com)
 - [Model Context Protocol](https://modelcontextprotocol.io)
