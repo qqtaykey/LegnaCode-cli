@@ -10,6 +10,10 @@
 import type { BundledSkillDefinition } from '../../../skills/bundledSkills.js'
 import { t } from '../../../utils/i18n.js'
 
+/** Wrap a prompt string into ContentBlockParam[] for skill system compatibility. */
+const wrap = (text: string): Promise<Array<{ type: 'text'; text: string }>> =>
+  Promise.resolve([{ type: 'text' as const, text }])
+
 export function getSuperpowersSkills(): BundledSkillDefinition[] {
   return [
     {
@@ -17,77 +21,77 @@ export function getSuperpowersSkills(): BundledSkillDefinition[] {
       description: t('[OML] 完成前验证 — 没有新鲜证据不能声称完成'),
       argumentHint: '<what to verify>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => VERIFY_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(VERIFY_PROMPT(args)),
     },
     {
       name: 'tdd',
       description: t('[OML] TDD 强制执行 — RED-GREEN-REFACTOR，先写测试再写代码'),
       argumentHint: '<feature or bugfix description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => TDD_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(TDD_PROMPT(args)),
     },
     {
       name: 'debug',
       description: t('[OML] 系统化调试 — 4 阶段根因分析，3 次失败质疑架构'),
       argumentHint: '<bug or issue description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => DEBUG_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(DEBUG_PROMPT(args)),
     },
     {
       name: 'brainstorm',
       description: t('[OML] 苏格拉底式设计 — 硬门控，设计未批准前禁止实现'),
       argumentHint: '<idea or feature description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => BRAINSTORM_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(BRAINSTORM_PROMPT(args)),
     },
     {
       name: 'write-plan',
       description: t('[OML] 写实现计划 — 将设计拆成 2-5 分钟的小任务'),
       argumentHint: '<spec or requirements>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => WRITE_PLAN_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(WRITE_PLAN_PROMPT(args)),
     },
     {
       name: 'sdd',
       description: t('[OML] 子代理驱动开发 — 实现→spec审查→质量审查三阶段'),
       argumentHint: '<plan file or task description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => SDD_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(SDD_PROMPT(args)),
     },
     {
       name: 'exec-plan',
       description: t('[OML] 执行计划 — 加载计划文件，逐任务执行并验证'),
       argumentHint: '<plan file path>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => EXEC_PLAN_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(EXEC_PLAN_PROMPT(args)),
     },
     {
       name: 'dispatch',
       description: t('[OML] 并行子代理 — 2+ 独立任务同时派发'),
       argumentHint: '<tasks description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => DISPATCH_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(DISPATCH_PROMPT(args)),
     },
     {
       name: 'code-review',
       description: t('[OML] 请求代码审查 — 派发 reviewer 子代理检查代码质量'),
       argumentHint: '<what to review>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => CODE_REVIEW_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(CODE_REVIEW_PROMPT(args)),
     },
     {
       name: 'worktree',
       description: t('[OML] Git worktree — 创建隔离工作区，自动 setup + 基线测试'),
       argumentHint: '<branch name>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => WORKTREE_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(WORKTREE_PROMPT(args)),
     },
     {
       name: 'finish-branch',
       description: t('[OML] 分支收尾 — 验证测试→合并/PR/保留/丢弃'),
       argumentHint: '',
       userInvocable: true,
-      getPromptForCommand: (args: string) => FINISH_BRANCH_PROMPT(args),
+      getPromptForCommand: (args: string) => wrap(FINISH_BRANCH_PROMPT(args)),
     },
   ]
 }

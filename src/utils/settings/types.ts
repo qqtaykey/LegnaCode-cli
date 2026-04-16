@@ -826,7 +826,7 @@ export const SettingsSchema = lazySchema(() =>
         .optional()
         .describe(
           'Custom directory for plan files, relative to project root. ' +
-            'If not set, defaults to ~/.claude/plans/',
+            'If not set, defaults to <cwd>/.legna/plans/',
         ),
       ...(process.env.USER_TYPE === 'ant'
         ? {
@@ -945,7 +945,7 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe(
-          'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .claude/settings.json) for security. When unset, defaults to ~/.claude/projects/<sanitized-cwd>/memory/.',
+          'Custom directory path for auto-memory storage. Supports ~/ prefix for home directory expansion. Ignored if set in projectSettings (checked-in .legna/settings.json) for security. When unset, defaults to <cwd>/.legna/memory/.',
         ),
       autoDreamEnabled: z
         .boolean()

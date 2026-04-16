@@ -2,6 +2,23 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.6] - 2026-04-13
+
+### Bug Fixes
+
+- **OML skill 崩溃修复** — 全部 40 个 OML skill（16 superpowers + 5 orchestrator + 19 agent）的 `getPromptForCommand` 返回 `string` 而非 `ContentBlockParam[]`，导致 `/ultrawork`、`/ralph`、`/autopilot` 等命令报 `result.filter is not a function`。已全部包装为 `Promise<[{ type: 'text', text }]>`。
+- **statusline 写入错误配置目录** — statuslineSetup agent 硬编码了 `~/.claude/settings.json`，已修正为 `~/.legna/`。
+
+### Improvements
+
+- **计划文件改为项目本地** — 默认 plan 目录从 `~/.legna/plans/` 改为 `<cwd>/.legna/plans/`，计划文件与项目同在。
+- **自动记忆改为项目本地** — 默认 autoMemPath 从 `~/.legna/projects/<slug>/memory/` 改为 `<cwd>/.legna/memory/`。首次启动自动从旧全局路径迁移文件（非破坏性，不覆盖已有文件）。
+- **Compound engineering 无感融合** — 从 compound-engineering-plugin 提取知识复利方法论，注入 3 个已有自动化节点，零新命令：
+  - `onPreCompress`：高价值交换对自动写入 `docs/solutions/`（通过 `mkdir docs/solutions` 启用）
+  - `prefetch`：自动搜索 `docs/solutions/` 中的历史经验
+  - `magicKeywords`：deep scope 检测（重构/迁移/架构）追加轻量提示
+- **旧路径注释清理** — 更新 memdir、extractMemories、settings types 中的 `~/.claude/projects/` 引用
+
 ## [1.4.5] - 2026-04-13
 
 ### Features

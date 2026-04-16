@@ -55,7 +55,7 @@ export function getAgentSkills(): BundledSkillDefinition[] {
       const disallowed = agent.disallowedTools?.length
         ? `\n\nTOOL RESTRICTIONS: You MUST NOT use these tools: ${agent.disallowedTools.join(', ')}.`
         : ''
-      return `You are the ${agent.name} agent. ${agent.description}.${disallowed}\n\nTask: ${args}`
+      return Promise.resolve([{ type: 'text' as const, text: `You are the ${agent.name} agent. ${agent.description}.${disallowed}\n\nTask: ${args}` }])
     },
   }))
 }

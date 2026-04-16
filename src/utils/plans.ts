@@ -91,13 +91,13 @@ export const getPlansDirectory = memoize(function getPlansDirectory(): string {
       logError(
         new Error(`plansDirectory must be within project root: ${settingsDir}`),
       )
-      plansPath = join(getClaudeConfigHomeDir(), 'plans')
+      plansPath = join(getCwd(), '.legna', 'plans')
     } else {
       plansPath = resolved
     }
   } else {
-    // Default
-    plansPath = join(getClaudeConfigHomeDir(), 'plans')
+    // Default: project-local .legna/plans/
+    plansPath = join(getCwd(), '.legna', 'plans')
   }
 
   // Ensure directory exists (mkdirSync with recursive: true is a no-op if it exists)

@@ -4,6 +4,23 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.6] - 2026-04-13
+
+### Bug Fixes
+
+- **OML skill crash fix** — All 40 OML skills (16 superpowers + 5 orchestrators + 19 agents) returned `string` instead of `ContentBlockParam[]` from `getPromptForCommand`, causing `result.filter is not a function` crash on `/ultrawork`, `/ralph`, `/autopilot`, etc. Now wrapped as `Promise<[{ type: 'text', text }]>`.
+- **Statusline writes to wrong config dir** — `statuslineSetup` agent hardcoded `~/.claude/settings.json` and `~/.claude/statusline-command.sh`. Fixed to `~/.legna/`.
+
+### Improvements
+
+- **Plans moved to project-local** — Default plan directory changed from `~/.legna/plans/` to `<cwd>/.legna/plans/`. Plans now live alongside the project they belong to.
+- **Auto-memory moved to project-local** — Default auto-memory path changed from `~/.legna/projects/<slug>/memory/` to `<cwd>/.legna/memory/`. First startup auto-migrates files from the legacy global path (non-destructive, never overwrites).
+- **Compound engineering seamless fusion** — Knowledge compounding from compound-engineering-plugin, injected into 3 existing automation points with zero new commands:
+  - `onPreCompress`: high-value exchange pairs auto-written to `docs/solutions/` (opt-in via `mkdir docs/solutions`)
+  - `prefetch`: auto-searches `docs/solutions/` for past learnings when user asks related questions
+  - `magicKeywords`: deep scope detection (refactor/migrate/architecture) appends a lightweight compound hint
+- **Legacy path comments cleaned** — Updated stale `~/.claude/projects/` references in memdir, extractMemories, settings types
+
 ## [1.4.5] - 2026-04-13
 
 ### Features

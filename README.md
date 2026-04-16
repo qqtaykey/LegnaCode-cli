@@ -33,11 +33,11 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **1.4.6** | OML skill crash fix; plans + memory → project-local; compound engineering fusion |
 | **1.4.5** | OpenViking content tiering (L0/L1/L2 degradation + budget-capped injection) |
 | **1.4.4** | Status messages → spinner line; comparison doc |
 | **1.4.3** | Mempalace memory fusion (DrawerStore + TF-IDF + 4-layer stack + knowledge graph) |
 | **1.4.2** | Progress feedback (8 silent paths fixed); verbose default on |
-| **1.4.0** | MiniMax multimodal (6 tools); RPC execution; Memory Provider; smart routing |
 
 <details>
 <summary>Older versions</summary>

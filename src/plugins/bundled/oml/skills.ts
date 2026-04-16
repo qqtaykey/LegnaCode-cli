@@ -7,6 +7,10 @@
 
 import type { BundledSkillDefinition } from '../../../skills/bundledSkills.js'
 
+/** Wrap a prompt string into ContentBlockParam[] for skill system compatibility. */
+const wrap = (text: string): Promise<Array<{ type: 'text'; text: string }>> =>
+  Promise.resolve([{ type: 'text' as const, text }])
+
 export function getOrchestratorSkills(): BundledSkillDefinition[] {
   return [
     {
@@ -14,28 +18,28 @@ export function getOrchestratorSkills(): BundledSkillDefinition[] {
       description: '[OML] 并行执行引擎 — 最大化 agent 利用，同时启动多个 agent 并行工作',
       argumentHint: '<task description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => ULTRAWORK_SKILL(args),
+      getPromptForCommand: (args: string) => wrap(ULTRAWORK_SKILL(args)),
     },
     {
       name: 'ralph',
       description: '[OML] 持久循环 — 不完成不停止，自动验证+重试直到所有任务完成',
       argumentHint: '<task description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => RALPH_SKILL(args),
+      getPromptForCommand: (args: string) => wrap(RALPH_SKILL(args)),
     },
     {
       name: 'autopilot',
       description: '[OML] 全自主执行 — 规划→执行→验证→修复的完整流水线',
       argumentHint: '<task description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => AUTOPILOT_SKILL(args),
+      getPromptForCommand: (args: string) => wrap(AUTOPILOT_SKILL(args)),
     },
     {
       name: 'ralplan',
       description: '[OML] 先规划再执行 — 模糊请求自动重定向到结构化规划',
       argumentHint: '<task description>',
       userInvocable: true,
-      getPromptForCommand: (args: string) => RALPLAN_SKILL(args),
+      getPromptForCommand: (args: string) => wrap(RALPLAN_SKILL(args)),
     },
     {
       name: 'plan-oml',
@@ -43,7 +47,7 @@ export function getOrchestratorSkills(): BundledSkillDefinition[] {
       argumentHint: '<task description>',
       userInvocable: true,
       model: 'opus',
-      getPromptForCommand: (args: string) => PLAN_SKILL(args),
+      getPromptForCommand: (args: string) => wrap(PLAN_SKILL(args)),
     },
   ]
 }

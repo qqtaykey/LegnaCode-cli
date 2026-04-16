@@ -1,5 +1,6 @@
 import memoize from 'lodash-es/memoize.js'
 import { homedir } from 'os'
+import { existsSync, readdirSync, copyFileSync, mkdirSync } from 'fs'
 import { isAbsolute, join, normalize, sep } from 'path'
 import {
   getIsNonInteractiveSession,
@@ -13,6 +14,8 @@ import {
 } from '../utils/envUtils.js'
 import { findCanonicalGitRoot } from '../utils/git.js'
 import { sanitizePath } from '../utils/path.js'
+import { getCwd } from '../utils/cwd.js'
+import { logForDebugging } from '../utils/debug.js'
 import {
   getInitialSettings,
   getSettingsForSource,
@@ -226,13 +229,55 @@ export const getAutoMemPath = memoize(
     if (override) {
       return override
     }
-    const projectsDir = join(getMemoryBaseDir(), 'projects')
-    return (
-      join(projectsDir, sanitizePath(getAutoMemBase()), AUTO_MEM_DIRNAME) + sep
-    ).normalize('NFC')
+    // Project-local: <cwd>/.legna/memory/
+    const cwd = getCwd()
+    const localPath = (join(cwd, '.legna', AUTO_MEM_DIRNAME) + sep).normalize('NFC')
+
+    // Auto-migrate from legacy global path (~/.legna/projects/<slug>/memory/)
+    const legacyProjectsDir = join(getMemoryBaseDir(), 'projects')
+    const legacyPath = join(legacyProjectsDir, sanitizePath(getAutoMemBase()), AUTO_MEM_DIRNAME)
+    migrateMemoryToLocal(legacyPath, localPath.replace(/[/\\]+$/, ''))
+
+    return localPath
   },
   () => getProjectRoot(),
 )
+
+/**
+ * One-time migration: copy memory files from legacy global path to project-local.
+ * - Only runs if legacy dir exists and has files
+ * - Never overwrites existing local files
+ * - Leaves legacy dir intact (fallback reads still work)
+ */
+function migrateMemoryToLocal(legacyDir: string, localDir: string): void {
+  try {
+    if (!existsSync(legacyDir)) return
+    const files = readdirSync(legacyDir)
+    if (files.length === 0) return
+
+    // Skip if local dir already has content (already migrated)
+    if (existsSync(localDir)) {
+      const localFiles = readdirSync(localDir)
+      if (localFiles.length > 0) return
+    }
+
+    mkdirSync(localDir, { recursive: true })
+    let migrated = 0
+    for (const file of files) {
+      const src = join(legacyDir, file)
+      const dst = join(localDir, file)
+      if (!existsSync(dst)) {
+        try {
+          copyFileSync(src, dst)
+          migrated++
+        } catch { /* skip individual file errors */ }
+      }
+    }
+    if (migrated > 0) {
+      logForDebugging(`[memory-migration] Migrated ${migrated} files from ${legacyDir} → ${localDir}`)
+    }
+  } catch { /* non-fatal */ }
+}
 
 /**
  * Returns the daily log file path for the given date (defaults to today).
