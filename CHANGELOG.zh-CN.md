@@ -2,6 +2,16 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.9] - 2026-04-17
+
+### Features
+
+- **Baseline（无 AVX）构建** — 为不支持 AVX 指令集的老款 x64 CPU 新增平台包：
+  - `@legna-lnc/legnacode-darwin-x64-baseline` — macOS Intel（2011 年前或无 AVX 的黑苹果）
+  - `@legna-lnc/legnacode-linux-x64-baseline` — 无 AVX 的 Linux x64 服务器/虚拟机
+  - 修复 `warn: CPU lacks AVX support, strange crashes may occur` 错误
+  - 安装：`npm i -g @legna-lnc/legnacode-darwin-x64-baseline`（直接使用，不通过主包）
+
 ## [1.4.8] - 2026-04-17
 
 ### Features

@@ -35,7 +35,9 @@ console.log(`${current} → ${next}`)
 const PLATFORMS = [
   '@legna-lnc/legnacode-darwin-arm64',
   '@legna-lnc/legnacode-darwin-x64',
+  '@legna-lnc/legnacode-darwin-x64-baseline',
   '@legna-lnc/legnacode-linux-x64',
+  '@legna-lnc/legnacode-linux-x64-baseline',
   '@legna-lnc/legnacode-linux-arm64',
   '@legna-lnc/legnacode-win32-x64',
   '@legna-lnc/legnacode-win32-ia32',

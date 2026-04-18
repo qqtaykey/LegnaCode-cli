@@ -4,6 +4,16 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.4.9] - 2026-04-17
+
+### Features
+
+- **Baseline (no-AVX) builds** — New platform packages for older x64 CPUs without AVX instruction set support:
+  - `@legna-lnc/legnacode-darwin-x64-baseline` — macOS Intel (pre-2011 or Hackintosh without AVX)
+  - `@legna-lnc/legnacode-linux-x64-baseline` — Linux x64 servers/VMs without AVX
+  - Fixes `warn: CPU lacks AVX support, strange crashes may occur` error
+  - Install: `npm i -g @legna-lnc/legnacode-darwin-x64-baseline` (use directly, not via main package)
+
 ## [1.4.8] - 2026-04-17
 
 ### Features

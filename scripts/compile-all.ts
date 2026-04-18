@@ -39,7 +39,9 @@ const EXTERNAL: string[] = [];
 const TARGETS = [
   { bun: "bun-darwin-arm64", os: "darwin", cpu: "arm64", pkg: "@legna-lnc/legnacode-darwin-arm64" },
   { bun: "bun-darwin-x64", os: "darwin", cpu: "x64", pkg: "@legna-lnc/legnacode-darwin-x64" },
+  { bun: "bun-darwin-x64-baseline", os: "darwin", cpu: "x64", pkg: "@legna-lnc/legnacode-darwin-x64-baseline" },
   { bun: "bun-linux-x64", os: "linux", cpu: "x64", pkg: "@legna-lnc/legnacode-linux-x64" },
+  { bun: "bun-linux-x64-baseline", os: "linux", cpu: "x64", pkg: "@legna-lnc/legnacode-linux-x64-baseline" },
   { bun: "bun-linux-arm64", os: "linux", cpu: "arm64", pkg: "@legna-lnc/legnacode-linux-arm64" },
   { bun: "bun-windows-x64", os: "win32", cpu: "x64", pkg: "@legna-lnc/legnacode-win32-x64" },
 ] as const;

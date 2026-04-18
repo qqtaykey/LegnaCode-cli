@@ -4,7 +4,7 @@
 
 **An AI-powered terminal programming assistant, supercharged.**
 
-[![version](https://img.shields.io/badge/version-1.4.8-blue)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.4.9-blue)](./CHANGELOG.md)
 [![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
@@ -33,6 +33,7 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **1.4.9** | Baseline (no-AVX) builds for older x64 CPUs (darwin-x64-baseline, linux-x64-baseline) |
 | **1.4.8** | AtomCode fusion (Pangu CJK spacing, frustration detection, loop guard, error file injection, first-read full) |
 | **1.4.7** | claude-mem fusion (content-hash dedup, token economics, relevance feedback, 90-day decay, privacy tags) |
 | **1.4.6** | OML skill crash fix; plans + memory → project-local; compound engineering fusion |
@@ -154,6 +155,20 @@ npm install -g @legna-lnc/legnacode --registry=https://registry.npmjs.org
 ```
 
 Once installed, the `legna` command is available in any directory. It automatically downloads the precompiled binary for your platform (supports macOS arm64/x64, Linux x64/arm64, Windows x64).
+
+### Older CPUs without AVX
+
+If you see `warn: CPU lacks AVX support, strange crashes may occur`, install the baseline build instead:
+
+```bash
+# macOS Intel (pre-2011 or Hackintosh without AVX)
+npm i -g @legna-lnc/legnacode-darwin-x64-baseline
+
+# Linux x64 (older servers/VMs without AVX)
+npm i -g @legna-lnc/legnacode-linux-x64-baseline
+```
+
+The baseline binary is in `node_modules/@legna-lnc/legnacode-<platform>-baseline/bin/legna`. Add it to your PATH or create an alias.
 
 ```bash
 # Verify installation
