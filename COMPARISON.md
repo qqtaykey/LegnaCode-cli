@@ -24,8 +24,11 @@
 | GCP Vertex | ✅ | ✅ |
 | Azure OpenAI | ❌ | ✅ |
 | MiniMax deep native integration | ❌ | ✅ 6 multimodal tools auto-registered |
+| OpenAI-compatible bridge | ❌ | ✅ Any `/v1/chat/completions` endpoint (Ollama/vLLM/LM Studio) |
+| DeepSeek / Qwen / GLM / SiliconFlow | ❌ | ✅ Via OpenAI-compat bridge + dedicated adapters |
 | Intelligent model routing | ❌ | ✅ Auto-selects model tier by prompt complexity |
-| Model Adapter architecture | Partial | ✅ Full adapters (MiniMax/Azure/custom) |
+| Model Adapter architecture | Partial | ✅ 7 adapters (DeepSeek/GLM/Kimi/MiMo/MiniMax/OpenAI-compat) |
+| JSON repair for weak models | ❌ | ✅ Fixes markdown fences, trailing commas, unbalanced brackets |
 
 ## Multimodal (MiniMax-exclusive)
 
@@ -54,6 +57,14 @@
 | Exchange-pair chunking | ❌ | ✅ Q+A pairing + 5-category scored tagging |
 | Cross-session search | ❌ | ✅ `/recall` command |
 | Memory Provider plugins | ❌ | ✅ Pluggable memory backends |
+| Content-hash deduplication | ❌ | ✅ sha256 + 30s window prevents duplicate observations |
+| Token economics tracking | ❌ | ✅ discoveryTokens + readTokens per drawer |
+| Relevance feedback | ❌ | ✅ Frequently recalled memories get up to +100% boost |
+| 90-day time decay | ❌ | ✅ Old memories fade but never fully disappear |
+| Privacy tag filtering | ❌ | ✅ `<private>` content auto-redacted before extraction |
+| L0/L1/L2 content tiering | ❌ | ✅ Budget-driven degradation (full → summary → one-liner) |
+| Cross-session knowledge | ❌ | ✅ Auto-writes `.legna/knowledge.md` on session end |
+| Project-local memory | ❌ Global `~/.claude/` | ✅ `<cwd>/.legna/memory/` with auto-migration |
 
 ## Context Management
 
@@ -75,6 +86,15 @@
 | RPC subprocess tool execution | ❌ | ✅ UDS RPC, compresses multi-step ops into one inference |
 | Autonomous skill detection | ❌ | ✅ Detects repeated patterns, prompts to save as skill |
 | Tool schema export | ❌ | ✅ Anthropic-compatible format |
+| Parallel file edit mode | ❌ | ✅ One sub-agent per file + sibling skeletons |
+| Code Graph (symbol index) | ❌ | ✅ Regex-based, TS/JS/Python/Go/Rust, incremental mtime |
+| Blast radius analysis | ❌ | ✅ `blastRadius()` — files affected if a file changes |
+| Caller tracing | ❌ | ✅ `traceCallers()` — who calls this symbol |
+| Tool call loop detection | ❌ | ✅ Same (tool, args) 3+ times → blocks |
+| Negative feedback detection | ❌ | ✅ Detects frustration, injects strategy-shift hint (EN/ZH/JA) |
+| Error file pre-injection | ❌ | ✅ Bash fail → auto-reads files from stderr/compiler output |
+| First-read full file | ❌ | ✅ Forces full read on first encounter, prevents fragmented reads |
+| Compound engineering | ❌ | ✅ Auto-writes `docs/solutions/`, prefetch searches past learnings |
 
 ## User Experience
 
@@ -87,6 +107,10 @@
 | Output retry indicator | ❌ Silent retry | ✅ Shows retry progress |
 | Tool execution log | ❌ | ✅ Tool name + queue depth |
 | Apple Terminal notifications | ❌ Inverted logic bug | ✅ Fixed |
+| Pangu CJK spacing | ❌ | ✅ Auto-inserts spaces between CJK and ASCII in markdown |
+| `/undo` command | ❌ | ✅ Reverts last file edit (Edit/Write), max 20 entries |
+| Workflow engine | ❌ Raw markdown only | ✅ Structured steps with checks, retry, dependencies |
+| Project-local plans | ❌ Global `~/.claude/plans/` | ✅ `<cwd>/.legna/plans/` |
 
 ## Configuration & Deployment
 

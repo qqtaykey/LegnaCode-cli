@@ -22,8 +22,11 @@
 | GCP Vertex | ✅ | ✅ |
 | Azure OpenAI | ❌ | ✅ |
 | MiniMax 深度原生兼容 | ❌ | ✅ 6 个多模态工具自动注册 |
+| OpenAI 兼容桥接器 | ❌ | ✅ 任何 `/v1/chat/completions` 端点（Ollama/vLLM/LM Studio） |
+| DeepSeek / Qwen / GLM / SiliconFlow | ❌ | ✅ 通过 OpenAI 兼容桥接 + 专用适配器 |
 | 智能模型路由 | ❌ | ✅ 按 prompt 复杂度自动选模型层 |
-| Model Adapter 架构 | 部分 | ✅ 完整适配器（MiniMax/Azure/自定义） |
+| Model Adapter 架构 | 部分 | ✅ 7 个适配器（DeepSeek/GLM/Kimi/MiMo/MiniMax/OpenAI 兼容） |
+| 弱模型 JSON 修复 | ❌ | ✅ 修复 markdown 围栏、尾逗号、不平衡括号 |
 
 ## 多模态能力（MiniMax 模型专属）
 
@@ -52,6 +55,14 @@
 | 交换对分块 | ❌ | ✅ Q+A 配对 + 5 类标记评分 |
 | 跨会话搜索 | ❌ | ✅ `/recall` 命令 |
 | Memory Provider 插件 | ❌ | ✅ 可插拔记忆后端 |
+| Content-hash 去重 | ❌ | ✅ sha256 + 30 秒窗口防止重复观察 |
+| Token 经济学追踪 | ❌ | ✅ 每个 drawer 记录发现成本 + 召回成本 |
+| 使用反馈 | ❌ | ✅ 频繁召回的记忆权重最多提升 100% |
+| 90 天时间衰减 | ❌ | ✅ 旧记忆渐隐但不消失 |
+| 隐私标签过滤 | ❌ | ✅ `<private>` 内容自动脱敏 |
+| L0/L1/L2 内容分级 | ❌ | ✅ 预算驱动降级（全文→摘要→一句话） |
+| 跨会话知识持久化 | ❌ | ✅ 会话结束自动写 `.legna/knowledge.md` |
+| 项目本地记忆 | ❌ 全局 `~/.claude/` | ✅ `<cwd>/.legna/memory/` 自动迁移 |
 
 ## 上下文管理
 
@@ -73,6 +84,15 @@
 | RPC 子进程工具执行 | ❌ | ✅ UDS RPC，多步操作压缩为一次推理 |
 | 自主技能检测 | ❌ | ✅ 检测重复模式，提示保存为技能 |
 | 工具 Schema 导出 | ❌ | ✅ Anthropic 兼容格式 |
+| 并行文件编辑模式 | ❌ | ✅ 每文件一个子代理 + 兄弟文件骨架 |
+| 代码图谱（符号索引） | ❌ | ✅ 正则提取，TS/JS/Python/Go/Rust，增量 mtime |
+| 爆炸半径分析 | ❌ | ✅ `blastRadius()` — 文件变更影响范围 |
+| 调用者追踪 | ❌ | ✅ `traceCallers()` — 谁调用了这个符号 |
+| 工具调用循环检测 | ❌ | ✅ 同 (tool, args) 3+ 次 → 阻断 |
+| 负面反馈检测 | ❌ | ✅ 检测挫败感，注入策略转换提示（EN/ZH/JA） |
+| 错误文件预注入 | ❌ | ✅ bash 失败 → 自动读取 stderr/编译器输出中的文件 |
+| 首次读取强制全文 | ❌ | ✅ 首次读文件忽略 offset/limit，防止分段读取 |
+| Compound engineering | ❌ | ✅ 自动写 `docs/solutions/`，prefetch 搜索历史经验 |
 
 ## 用户体验
 
@@ -85,6 +105,10 @@
 | Output 重试提示 | ❌ 静默重试 | ✅ 显示重试进度 |
 | 工具执行日志 | ❌ | ✅ 工具名 + 队列深度 |
 | Apple Terminal 通知 | ❌ 逻辑反转 bug | ✅ 已修复 |
+| Pangu CJK 间距 | ❌ | ✅ Markdown 渲染时自动在中日韩与 ASCII 之间插空格 |
+| `/undo` 命令 | ❌ | ✅ 撤销上一次文件编辑（Edit/Write），最多 20 条 |
+| 工作流引擎 | ❌ 原始 markdown | ✅ 结构化步骤 + 检查条件 + 重试 + 依赖 |
+| 项目本地计划 | ❌ 全局 `~/.claude/plans/` | ✅ `<cwd>/.legna/plans/` |
 
 ## 配置与部署
 
