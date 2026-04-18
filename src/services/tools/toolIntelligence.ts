@@ -46,14 +46,28 @@ export function resetToolIntelligence(): void {
 
 const FILE_PATH_RE = /(?:^|\s|['"`])((?:\/[\w.-]+)+\.(?:ts|tsx|js|jsx|py|rs|go|java|c|cpp|h|hpp|rb|swift|kt|cs|vue|svelte|json|yaml|yml|toml|md))\b/g
 
+// Compiler-specific patterns: tsc, eslint, pytest, rustc, go, gcc
+const COMPILER_PATH_RE = /(?:^|\s)([\w./\\-]+\.(?:ts|tsx|js|jsx|py|rs|go|c|cpp|java))\s*[:(]\s*\d+/gm
+
 /** Extract file paths from error output and read first 30 lines of each. */
 export function extractErrorFiles(output: string, exitCode: number): string {
   if (exitCode === 0) return ''
 
   const paths = new Set<string>()
   let match: RegExpExecArray | null
+
+  // Standard file paths
   FILE_PATH_RE.lastIndex = 0
   while ((match = FILE_PATH_RE.exec(output)) !== null) {
+    const p = match[1]!
+    if (existsSync(p) && paths.size < 3) {
+      paths.add(p)
+    }
+  }
+
+  // Compiler-style paths (file.ts:42, file.py(10))
+  COMPILER_PATH_RE.lastIndex = 0
+  while ((match = COMPILER_PATH_RE.exec(output)) !== null) {
     const p = match[1]!
     if (existsSync(p) && paths.size < 3) {
       paths.add(p)

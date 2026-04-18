@@ -2396,7 +2396,24 @@ export function startRelevantMemoryPrefetch(
     collectRecentSuccessfulTools(messages, lastUserMessage),
     controller.signal,
     surfaced.paths,
-  ).catch(e => {
+  ).then(results => {
+    // AtomCode fusion: inject code graph file summaries into prefetch results
+    try {
+      const graph = (globalThis as any).__legnaCodeGraph
+      if (graph) {
+        // Extract file paths mentioned in user input
+        const fileRe = /(?:[\w./\\-]+\.(?:ts|tsx|js|jsx|py|go|rs))\b/g
+        const mentioned = [...new Set((input.match(fileRe) || []))]
+        for (const f of mentioned.slice(0, 3)) {
+          const summary = graph.getFileSummary(f)
+          if (summary) {
+            results.push({ type: 'text', text: summary } as any)
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+    return results
+  }).catch(e => {
     if (!isAbortError(e)) {
       logError(e)
     }

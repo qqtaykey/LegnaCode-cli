@@ -25,15 +25,26 @@ All notable changes to LegnaCode CLI will be documented in this file.
 - **Code Graph (Layer B2)** — Regex-based symbol index + file dependency graph:
   - Languages: TypeScript/TSX, JavaScript, Python, Go, Rust
   - Incremental mtime updates, persisted to `<cwd>/.legna/.palace/graph.json`
-  - APIs: `getFileSummary()`, `traceCallers()`, `blastRadius()`
+  - **Wired:** auto-builds on session start, injects file summaries into prefetch context
 
 - **Parallel File Edit (Layer B3)** — "One sub-agent per file" execution model:
   - Target file full text + sibling skeletons + interface contracts
-  - Conflict detection across parallel edits
+  - **Wired:** integrated into `/dispatch` skill prompt with parallel edit instructions
 
 - **Workflow Engine (Layer B4)** — Structured step execution:
   - Markdown `## Step N:` format with checks, failure handling, dependencies
-  - State tracking, retry logic, status summary
+  - **Wired:** WorkflowTool now parses steps, shows status, substitutes args
+
+- **/undo command** — Reverts the last file edit (Edit or Write tool):
+  - Tracks original content before each edit, max 20 entries per session
+  - New file creation → undo deletes the file
+
+- **Cross-session knowledge persistence** — Auto-writes `<cwd>/.legna/knowledge.md`:
+  - Extracts key decisions/actions from last 10 assistant messages on session end
+  - Appends timestamped entries, caps at 50KB
+
+- **Enhanced compiler error detection** — Extended error file pre-injection:
+  - Now matches compiler-style paths (`file.ts:42`, `file.py(10)`) in addition to standard paths
 
 ## [1.4.7] - 2026-04-16
 

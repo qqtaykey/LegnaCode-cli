@@ -413,6 +413,17 @@ export function startDeferredPrefetches(): void {
   }
   void countFilesRoundedRg(getCwd(), AbortSignal.timeout(3000), []);
 
+  // AtomCode fusion: build code graph index in background
+  void (async () => {
+    try {
+      const { CodeGraph } = await import('./services/codeGraph/codeGraph.js')
+      const graph = new CodeGraph(getCwd())
+      graph.build(500)
+      // Store on globalThis for prefetch access
+      ;(globalThis as any).__legnaCodeGraph = graph
+    } catch { /* non-fatal */ }
+  })();
+
   // Analytics and feature flag initialization
   void initializeAnalyticsGates();
   void prefetchOfficialMcpUrls();

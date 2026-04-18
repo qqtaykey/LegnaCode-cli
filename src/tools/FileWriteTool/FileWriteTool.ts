@@ -244,6 +244,12 @@ export const FileWriteTool = buildTool({
     // Activate conditional skills whose path patterns match this file
     activateConditionalSkillsForPaths([fullFilePath], cwd)
 
+    // AtomCode fusion: record file state for /undo support
+    try {
+      const { recordBeforeEdit } = await import('../../services/undoTracker.js')
+      recordBeforeEdit(fullFilePath, 'Write')
+    } catch { /* non-fatal */ }
+
     await diagnosticTracker.beforeFileEdited(fullFilePath)
 
     // Ensure parent directory exists before the atomic read-modify-write section.

@@ -38,8 +38,35 @@ export const WorkflowTool = buildTool({
 
     try {
       const content = await fs.readFile(filePath, 'utf-8')
+
+      // AtomCode fusion: parse workflow into structured steps with engine
+      const { parseWorkflow, createWorkflowState, getNextStep, workflowStatus } = await import('../../services/codeGraph/workflowEngine.js')
+      const steps = parseWorkflow(content)
+
+      if (steps.length === 0) {
+        // No structured steps found — fall back to raw markdown
+        return { data: content }
+      }
+
+      const state = createWorkflowState(steps)
+      const nextStep = getNextStep(state)
+      const status = workflowStatus(state)
+
+      // Substitute args into step instructions
+      let instructions = steps.map(s => {
+        let inst = s.instruction
+        if (input.args) {
+          for (const [k, v] of Object.entries(input.args)) {
+            inst = inst.replace(new RegExp(`\\$\\{${k}\\}`, 'g'), v)
+          }
+        }
+        return `## Step ${s.id}: ${s.name}\n${inst}${s.check ? `\n**check:** \`${s.check.command}\`${s.check.contains ? ` contains "${s.check.contains}"` : ''}` : ''}${s.depends ? `\n**depends:** Step ${s.depends.join(', ')}` : ''}`
+      }).join('\n\n')
+
+      const header = `# Workflow: ${input.workflow_name}\n**${steps.length} steps** | Next: Step ${nextStep?.id ?? 'none'}\n\n${status}\n\n---\n\n`
+
       return {
-        data: content,
+        data: header + instructions + '\n\n---\n\nExecute each step in order. After each step, verify the **check** condition if present. On failure, retry up to the specified limit or abort.',
       }
     } catch {
       return {

@@ -162,6 +162,50 @@ export class FileMemoryProvider extends MemoryProvider {
 
   onSessionEnd(messages: unknown[]): void {
     logForDebugging(`[FileMemoryProvider] Session ended with ${messages.length} messages`)
+
+    // AtomCode fusion: persist cross-session knowledge summary
+    try {
+      const { writeFileSync, existsSync, mkdirSync } = require('fs')
+      const { join } = require('path')
+      const { getCwd } = require('../utils/cwd.js')
+      const cwd = getCwd()
+      const legnaDir = join(cwd, '.legna')
+      if (!existsSync(legnaDir)) mkdirSync(legnaDir, { recursive: true })
+      const knowledgePath = join(legnaDir, 'knowledge.md')
+
+      // Extract key decisions and actions from this session
+      const entries: string[] = []
+      const simplified = (messages as any[])
+        .filter(m => m.type === 'assistant')
+        .slice(-10) // last 10 assistant messages
+      for (const m of simplified) {
+        const content = m.message?.content
+        let text = ''
+        if (typeof content === 'string') text = content
+        else if (Array.isArray(content)) {
+          text = content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join(' ')
+        }
+        // Extract lines that look like decisions/actions
+        for (const line of text.split('\n')) {
+          if (line.length > 30 && line.length < 200 &&
+            /(?:created|modified|fixed|added|removed|updated|implemented|refactored|changed)/i.test(line)) {
+            entries.push(line.trim())
+          }
+        }
+      }
+
+      if (entries.length > 0) {
+        const timestamp = new Date().toISOString().slice(0, 19)
+        const section = `\n## ${timestamp}\n${entries.slice(0, 10).map(e => `- ${e}`).join('\n')}\n`
+        const existing = existsSync(knowledgePath) ? require('fs').readFileSync(knowledgePath, 'utf-8') : '# Session Knowledge\n'
+        // Cap file at 50KB
+        const combined = existing.length > 50000 ? existing.slice(-40000) + section : existing + section
+        writeFileSync(knowledgePath, combined, 'utf-8')
+        logForDebugging(`[FileMemoryProvider] Wrote ${entries.length} knowledge entries`)
+      }
+    } catch (e) {
+      logForDebugging(`[FileMemoryProvider] knowledge.md write failed: ${e}`)
+    }
   }
 
   onPreCompress(messages: unknown[]): string {

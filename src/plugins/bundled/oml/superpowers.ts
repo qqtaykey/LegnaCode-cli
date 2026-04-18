@@ -316,6 +316,17 @@ function DISPATCH_PROMPT(args: string): string {
 
 When you have 2+ independent tasks, dispatch one agent per problem domain concurrently.
 
+## Parallel File Edit Mode
+When the task involves editing multiple independent files, use the parallel file edit pattern:
+1. For each file, spawn a sub-agent with: target file full text + sibling file skeletons
+2. Each agent edits ONE file only — call Edit/Write immediately, no explanation
+3. After all agents complete, check for conflicts (same file edited twice)
+
+To build parallel edit tasks, use this pattern in your agent prompts:
+- Include the FULL content of the target file
+- Include function/class signatures from sibling files (same directory) for context
+- Constrain: "You are editing ONE file: <path>. Do NOT edit any other file."
+
 ## When to Use
 - 3+ test files failing with different root causes
 - Multiple subsystems broken independently
