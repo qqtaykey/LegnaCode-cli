@@ -22,6 +22,8 @@ import type {
   SDKControlMcpSetServersResponseSchema,
   SDKControlReloadPluginsRequestSchema,
   SDKControlReloadPluginsResponseSchema,
+  SDKControlRequestSchema,
+  SDKControlResponseSchema,
 } from './controlSchemas.js'
 
 // Re-export inferred types from control schemas
@@ -40,8 +42,8 @@ export type SDKControlMcpSetServersResponse = z.infer<ReturnType<typeof SDKContr
 export type SDKControlReloadPluginsRequest = z.infer<ReturnType<typeof SDKControlReloadPluginsRequestSchema>>
 export type SDKControlReloadPluginsResponse = z.infer<ReturnType<typeof SDKControlReloadPluginsResponseSchema>>
 
-// Union of all control request types
-export type SDKControlRequest =
+// Inner union of all control request payload types (without wrapper)
+export type SDKControlRequestInner =
   | SDKControlInitializeRequest
   | SDKControlInterruptRequest
   | SDKControlPermissionRequest
@@ -53,12 +55,19 @@ export type SDKControlRequest =
   | SDKControlMcpSetServersRequest
   | SDKControlReloadPluginsRequest
 
-// Union of all control response types
-export type SDKControlResponse =
+// Inner union of all control response payload types (without wrapper)
+export type SDKControlResponseInner =
   | SDKControlInitializeResponse
   | SDKControlMcpStatusResponse
   | SDKControlMcpSetServersResponse
   | SDKControlReloadPluginsResponse
+
+// Outer wrapper types matching the wire format
+// { type: 'control_request', request_id: string, request: SDKControlRequestInner }
+export type SDKControlRequest = z.infer<ReturnType<typeof SDKControlRequestSchema>>
+
+// { type: 'control_response', response: { subtype: 'success'|'error', request_id, ... } }
+export type SDKControlResponse = z.infer<ReturnType<typeof SDKControlResponseSchema>>
 
 // Stdout message type for structured output
 import type { StdoutMessageSchema } from './controlSchemas.js'

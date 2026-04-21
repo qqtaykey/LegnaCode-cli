@@ -19,6 +19,8 @@ import type {
   SDKStatusSchema,
   SDKUserMessageSchema,
   SDKResultMessageSchema,
+  SDKResultSuccessSchema,
+  SDKResultErrorSchema,
   SDKSessionInfoSchema,
   SDKAssistantMessageSchema,
   SDKAssistantMessageErrorSchema,
@@ -42,6 +44,8 @@ export type SDKMessage = z.infer<ReturnType<typeof SDKMessageSchema>>
 export type SDKStatus = z.infer<ReturnType<typeof SDKStatusSchema>>
 export type SDKUserMessage = z.infer<ReturnType<typeof SDKUserMessageSchema>>
 export type SDKResultMessage = z.infer<ReturnType<typeof SDKResultMessageSchema>>
+export type SDKResultSuccess = z.infer<ReturnType<typeof SDKResultSuccessSchema>>
+export type SDKResultError = z.infer<ReturnType<typeof SDKResultErrorSchema>>
 export type SDKSessionInfo = z.infer<ReturnType<typeof SDKSessionInfoSchema>>
 export type SDKAssistantMessage = z.infer<ReturnType<typeof SDKAssistantMessageSchema>>
 export type SDKAssistantMessageError = z.infer<ReturnType<typeof SDKAssistantMessageErrorSchema>>
