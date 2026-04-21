@@ -2,9 +2,9 @@
  * /mode command registration.
  */
 
-import type { Command } from '../../commands.js'
+import type { Command } from '../../types/command.js'
 
-export const modeCommand: Command = {
+const mode: Command = {
   type: 'local',
   name: 'mode',
   description: 'Switch collaboration mode (default, plan, execute, pair)',
@@ -16,7 +16,6 @@ export const modeCommand: Command = {
     const target = args[0]?.trim()
 
     if (!target) {
-      // List all modes
       const modes = manager.listModes()
       const activeId = manager.getActiveModeId()
       const lines = modes.map(m => {
@@ -29,7 +28,6 @@ export const modeCommand: Command = {
       }
     }
 
-    // Switch mode
     const ok = manager.switchMode(target)
     if (!ok) {
       const available = manager.listModes().map(m => m.id).join(', ')
@@ -39,17 +37,19 @@ export const modeCommand: Command = {
       }
     }
 
-    const mode = manager.getActiveMode()
+    const active = manager.getActiveMode()
     const flags: string[] = []
-    if (mode.behaviorFlags.readOnly) flags.push('read-only')
-    if (mode.behaviorFlags.autoExecute) flags.push('auto-execute')
-    if (mode.behaviorFlags.stepByStep) flags.push('step-by-step')
-    if (mode.behaviorFlags.requirePlan) flags.push('require-plan')
+    if (active.behaviorFlags.readOnly) flags.push('read-only')
+    if (active.behaviorFlags.autoExecute) flags.push('auto-execute')
+    if (active.behaviorFlags.stepByStep) flags.push('step-by-step')
+    if (active.behaviorFlags.requirePlan) flags.push('require-plan')
 
     const flagStr = flags.length > 0 ? ` [${flags.join(', ')}]` : ''
     return {
       type: 'result' as const,
-      result: `Switched to ${mode.name} mode.${flagStr}\n${mode.description}`,
+      result: `Switched to ${active.name} mode.${flagStr}\n${active.description}`,
     }
   },
 }
+
+export default mode
