@@ -47,7 +47,7 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
 
   // GET /api/version
   if (parts[0] === 'version' && method === 'GET') {
-    return json({ version: typeof MACRO !== 'undefined' ? MACRO.VERSION : '1.5.4' })
+    return json({ version: typeof MACRO !== 'undefined' ? MACRO.VERSION : '1.5.6' })
   }
 
   // POST /api/migrate
@@ -381,9 +381,20 @@ function handleChatSSE(message: string, cwd?: string, _sessionId?: string): Resp
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder()
+      let closed = false
 
       const sendEvent = (event: string, data: any) => {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        if (closed) return
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+        } catch { /* controller already closed by client disconnect */ }
+      }
+
+      const closeOnce = () => {
+        if (closed) return
+        closed = true
+        try { controller.close() } catch { /* already closed */ }
+        if (activeChatProcess === child) activeChatProcess = null
       }
 
       let buffer = ''
@@ -399,7 +410,6 @@ function handleChatSSE(message: string, cwd?: string, _sessionId?: string): Resp
             const parsed = JSON.parse(line)
 
             if (parsed.type === 'partial') {
-              // Streaming partial message — extract latest text delta
               const content = parsed.message?.content
               if (Array.isArray(content)) {
                 const lastText = content.filter((b: any) => b.type === 'text').pop()
@@ -412,7 +422,6 @@ function handleChatSSE(message: string, cwd?: string, _sessionId?: string): Resp
                 }
               }
             } else if (parsed.type === 'assistant') {
-              // Complete assistant message — extract all blocks
               const content = parsed.message?.content
               if (Array.isArray(content)) {
                 for (const block of content) {
@@ -462,7 +471,6 @@ function handleChatSSE(message: string, cwd?: string, _sessionId?: string): Resp
       })
 
       child.on('close', (code) => {
-        // Flush remaining buffer
         if (buffer.trim()) {
           try {
             const parsed = JSON.parse(buffer)
@@ -472,14 +480,12 @@ function handleChatSSE(message: string, cwd?: string, _sessionId?: string): Resp
           }
         }
         sendEvent('done', { code })
-        controller.close()
-        if (activeChatProcess === child) activeChatProcess = null
+        closeOnce()
       })
 
       child.on('error', (err) => {
         sendEvent('error', { content: err.message })
-        controller.close()
-        if (activeChatProcess === child) activeChatProcess = null
+        closeOnce()
       })
     },
     cancel() {
@@ -526,6 +532,7 @@ export async function startAdminServer(opts: { port?: number } = {}) {
     try {
       const server = Bun.serve({
         port,
+        idleTimeout: 255,
         async fetch(req) {
           const url = new URL(req.url)
 

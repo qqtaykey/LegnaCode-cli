@@ -4,6 +4,13 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.5.6] - 2026-04-21
+
+### Bug Fixes
+
+- **WebUI SSE timeout** — Bun.serve `idleTimeout` raised to 255s (max); SSE streaming no longer drops after 10s.
+- **WebUI controller double-close crash** — Guard `sendEvent` and `controller.close()` against repeated invocation after client disconnect.
+
 ## [1.5.4] - 2026-04-21
 
 Republish of 1.5.3 with all platform binaries in sync.
