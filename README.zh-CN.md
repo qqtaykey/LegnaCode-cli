@@ -11,7 +11,8 @@
 
 🌐 [English](./README.md) · 📊 [对比 Claude Code](./COMPARISON.zh-CN.md) · 📋 [更新日志](./CHANGELOG.zh-CN.md)
 
-<img width="1256" height="416" alt="LegnaCode banner" src="https://github.com/user-attachments/assets/5e4717e6-3404-4901-9f5c-1c6462fb1c1a" />
+<img width="855" height="319" alt="image" src="https://github.com/user-attachments/assets/6e94a216-e382-49df-aa2f-63fb96336614" />
+
 
 </div>
 
