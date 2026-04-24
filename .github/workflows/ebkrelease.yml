@@ -12,7 +12,7 @@ on:
       skip_win32:
         description: 'Skip win32 build'
         type: boolean
-        default: false  # 👈 已修复，默认不跳过
+        default: false
       dry_run:
         description: 'Dry run (no actual publish)'
         type: boolean
@@ -26,18 +26,15 @@ env:
   RUST_TOOLCHAIN: 'stable'
 
 jobs:
-  # ── Step 1: Bump version & build webui ──
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
       - name: Determine version
         id: version
         run: |
@@ -46,13 +43,10 @@ jobs:
           else
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
-
       - name: Bump version
         run: bun run scripts/bump.ts ${{ steps.version.outputs.version }}
-
       - name: Build WebUI
         run: bun run scripts/build-webui.ts
-
       - name: Upload prepared source
         uses: actions/upload-artifact@v4
         with:
@@ -64,7 +58,7 @@ jobs:
             !native/target
           retention-days: 1
 
-  # ── Step 2: Build Rust native addons (per-platform runners) ──
+  # ====================== 【修复点 1：添加 Windows 构建】 ======================
   native:
     needs: prepare
     strategy:
@@ -87,6 +81,12 @@ jobs:
             platform: linux
             arch: arm64
             rust_target: aarch64-unknown-linux-gnu
+          # 👇 新增 Windows 构建
+          - runner: windows-latest
+            platform: win32
+            arch: x64
+            rust_target: x86_64-pc-windows-msvc
+
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/download-artifact@v4
@@ -97,15 +97,15 @@ jobs:
         with:
           targets: ${{ matrix.rust_target }}
 
-      - name: Build native addons
+      # 👇 Linux/macOS 构建逻辑（保留）
+      - name: Build native (Unix)
+        if: runner.os != 'Windows'
         working-directory: native
         run: |
           CRATES="sandbox file-search apply-patch"
           for crate in $CRATES; do
             echo "Building $crate for ${{ matrix.rust_target }}..."
             cargo build --release -p "legnacode-${crate}" --target ${{ matrix.rust_target }}
-
-            # Find the compiled library
             CRATE_UNDER=$(echo "$crate" | tr '-' '_')
             LIB_NAME="legnacode_${CRATE_UNDER}"
             if [ "${{ matrix.platform }}" = "darwin" ]; then
@@ -113,11 +113,28 @@ jobs:
             elif [ "${{ matrix.platform }}" = "linux" ]; then
               SRC="target/${{ matrix.rust_target }}/release/lib${LIB_NAME}.so"
             fi
-
             DEST="../src/native/${crate}.${{ matrix.platform }}-${{ matrix.arch }}.node"
             cp "$SRC" "$DEST"
             echo "  → $DEST"
           done
+
+      # 👇 Windows 构建逻辑（新增，处理 .dll）
+      - name: Build native (Windows)
+        if: runner.os == 'Windows'
+        working-directory: native
+        shell: pwsh
+        run: |
+          $CRATES = "sandbox","file-search","apply-patch"
+          foreach ($crate in $CRATES) {
+            echo "Building $crate for ${{ matrix.rust_target }}..."
+            cargo build --release -p "legnacode-$crate" --target ${{ matrix.rust_target }}
+            $crateUnder = $crate.Replace("-", "_")
+            $libName = "legnacode_$crateUnder"
+            $src = "target/${{ matrix.rust_target }}/release/$libName.dll"
+            $dest = "../src/native/$crate.${{ matrix.platform }}-${{ matrix.arch }}.node"
+            copy $src $dest
+            echo "  → $dest"
+          }
 
       - name: Upload native addons
         uses: actions/upload-artifact@v4
@@ -126,7 +143,6 @@ jobs:
           path: src/native/*.node
           retention-days: 1
 
-  # ── Step 3: Cross-compile Bun binaries (all platforms) ──
   compile:
     needs: [prepare, native]
     runs-on: ubuntu-latest
@@ -177,9 +193,9 @@ jobs:
         with:
           name: prepared-source
 
-      # Download matching native addons into src/native/
+      # ====================== 【修复点 2：不再跳过 Windows 下载 native】 ======================
       - uses: actions/download-artifact@v4
-        if: steps.skip.outputs.skip == 'false' && matrix.os != 'win32'
+        if: steps.skip.outputs.skip == 'false'
         with:
           name: native-${{ matrix.os }}-${{ matrix.arch }}
           path: src/native/
@@ -198,14 +214,11 @@ jobs:
           if [ "${{ matrix.os }}" = "win32" ]; then EXT=".exe"; fi
           mv legna${EXT} dist/${{ matrix.pkg }}/bin/legna${EXT}
 
-          # Copy native .node files into the package bin/ dir
-          if [ "${{ matrix.os }}" != "win32" ]; then
-            for f in src/native/*.${{ matrix.os }}-${{ matrix.arch }}.node; do
-              [ -f "$f" ] && cp "$f" dist/${{ matrix.pkg }}/bin/
-            done
-          fi
+          # ====================== 【修复点 3：Windows 也复制 native 文件】 ======================
+          for f in src/native/*.${{ matrix.os }}-${{ matrix.arch }}.node; do
+            [ -f "$f" ] && cp "$f" dist/${{ matrix.pkg }}/bin/
+          done
 
-          # Copy package.json
           cp .npm-packages/${{ matrix.pkg }}/package.json dist/${{ matrix.pkg }}/package.json
 
       - name: Upload compiled package
@@ -216,7 +229,6 @@ jobs:
           path: dist/${{ matrix.pkg }}
           retention-days: 1
 
-  # ── Step 4: Publish to npm ──
   publish:
     needs: [prepare, compile]
     runs-on: ubuntu-latest
@@ -226,19 +238,16 @@ jobs:
           path: packages
           pattern: legnacode-*
           merge-multiple: false
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-
       - name: Publish platform packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           DRY_RUN=""
           if [ "${{ inputs.dry_run }}" = "true" ]; then DRY_RUN="--dry-run"; fi
-
           for pkg_dir in packages/legnacode-*/; do
             if [ ! -f "$pkg_dir/package.json" ]; then continue; fi
             pkg_name=$(node -p "require('./${pkg_dir}/package.json').name")
@@ -247,7 +256,6 @@ jobs:
             npm publish --access public $DRY_RUN || echo "⚠️ Failed or already published: $pkg_name"
             cd -
           done
-
       - name: Summary
         run: |
           echo "## Published v${{ needs.prepare.outputs.version }}" >> $GITHUB_STEP_SUMMARY
