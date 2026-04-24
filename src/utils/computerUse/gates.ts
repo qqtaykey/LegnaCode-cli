@@ -1,4 +1,4 @@
-import type { CoordinateMode, CuSubGates } from '../../vendor/computer-use-mcp/types.js'
+import type { CoordinateMode, CuSubGates } from './mcp/types.js'
 
 /**
  * Computer Use feature gates. Replaces the original GrowthBook-based

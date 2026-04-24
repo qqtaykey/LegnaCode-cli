@@ -1,4 +1,4 @@
-import { buildComputerUseTools } from '../../vendor/computer-use-mcp/tools.js'
+import { buildComputerUseTools } from './mcp/tools.js'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 import { buildMcpToolName } from '../../services/mcp/mcpStringUtils.js'

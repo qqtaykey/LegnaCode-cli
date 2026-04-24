@@ -16,10 +16,10 @@
  * (see gates.ts).
  */
 
-import { bindSessionContext } from '../../vendor/computer-use-mcp/mcpServer.js';
-import { DEFAULT_GRANT_FLAGS } from '../../vendor/computer-use-mcp/types.js';
-import type { ComputerUseSessionContext, CuPermissionRequest, CuPermissionResponse, ScreenshotDims } from '../../vendor/computer-use-mcp/types.js';
-import type { CuCallToolResult } from '../../vendor/computer-use-mcp/toolCalls.js';
+import { bindSessionContext } from './mcp/mcpServer.js';
+import { DEFAULT_GRANT_FLAGS } from './mcp/types.js';
+import type { ComputerUseSessionContext, CuPermissionRequest, CuPermissionResponse, ScreenshotDims } from './mcp/types.js';
+import type { CuCallToolResult } from './mcp/toolCalls.js';
 import * as React from 'react';
 import { getSessionId } from '../../bootstrap/state.js';
 import { ComputerUseApproval } from '../../components/permissions/ComputerUseApproval/ComputerUseApproval.js';

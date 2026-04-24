@@ -18,8 +18,8 @@ import type {
   ResolvePrepareCaptureResult,
   RunningApp,
   ScreenshotResult,
-} from '../../vendor/computer-use-mcp/executor.js'
-import { API_RESIZE_PARAMS, targetImageSize } from '../../vendor/computer-use-mcp/imageResize.js'
+} from './mcp/executor.js'
+import { API_RESIZE_PARAMS, targetImageSize } from './mcp/imageResize.js'
 import { logForDebugging } from '../debug.js'
 import {
   CLI_CU_CAPABILITIES,
