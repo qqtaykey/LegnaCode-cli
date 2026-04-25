@@ -222,49 +222,69 @@ function getActiveProfile(dir: string): string {
 function handleSessions(dir: string, scope: Scope, limit: number): Response {
   const historyPath = join(dir, 'projects')
   const sessions: any[] = []
+  const seenIds = new Set<string>()
+
+  // Helper: scan a directory of JSONL files and add sessions
+  const scanDir = (sessionDir: string, proj: string, projectPathHint?: string) => {
+    let files: string[]
+    try { files = readdirSync(sessionDir).filter(f => f.endsWith('.jsonl')) } catch { return }
+    for (const file of files) {
+      const sessionId = file.replace('.jsonl', '')
+      if (seenIds.has(sessionId)) continue
+      seenIds.add(sessionId)
+      const filePath = join(sessionDir, file)
+      try {
+        const raw = readFileSync(filePath, 'utf-8')
+        const lines = raw.trim().split('\n').filter(Boolean)
+        let timestamp = ''
+        let cwd = ''
+        let slug = ''
+        let promptCount = 0
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line)
+            if (entry.type === 'user') {
+              promptCount++
+              if (!timestamp && entry.timestamp) timestamp = entry.timestamp
+              if (!cwd && entry.cwd) cwd = entry.cwd === '.' ? undefined : entry.cwd
+              if (!slug && entry.slug) slug = entry.slug
+            }
+          } catch {}
+        }
+        if (!timestamp) continue
+        const projectPath = cwd || projectPathHint || proj.replace(/-/g, '/')
+        sessions.push({
+          id: sessionId,
+          project: proj,
+          projectPath,
+          cwd,
+          slug,
+          timestamp,
+          promptCount,
+          resumeCommand: buildResumeCommand(projectPath, sessionId),
+        })
+      } catch {}
+    }
+  }
+
+  // 1. Scan global sessions: ~/.legna/projects/<slug>/*.jsonl
   try {
     const projects = readdirSync(historyPath)
     for (const proj of projects) {
-      const projDir = join(historyPath, proj)
-      let files: string[]
-      try { files = readdirSync(projDir).filter(f => f.endsWith('.jsonl')) } catch { continue }
-      for (const file of files) {
-        const sessionId = file.replace('.jsonl', '')
-        const filePath = join(projDir, file)
-        try {
-          const raw = readFileSync(filePath, 'utf-8')
-          const lines = raw.trim().split('\n').filter(Boolean)
-          let timestamp = ''
-          let cwd = ''
-          let slug = ''
-          let promptCount = 0
-          for (const line of lines) {
-            try {
-              const entry = JSON.parse(line)
-              if (entry.type === 'user') {
-                promptCount++
-                if (!timestamp && entry.timestamp) timestamp = entry.timestamp
-                if (!cwd && entry.cwd) cwd = entry.cwd === '.' ? undefined : entry.cwd
-                if (!slug && entry.slug) slug = entry.slug
-              }
-            } catch {}
-          }
-          if (!timestamp) continue
-          const projectPath = cwd || proj.replace(/-/g, '/')
-          sessions.push({
-            id: sessionId,
-            project: proj,
-            projectPath,
-            cwd,
-            slug,
-            timestamp,
-            promptCount,
-            resumeCommand: buildResumeCommand(projectPath, sessionId),
-          })
-        } catch {}
-      }
+      scanDir(join(historyPath, proj), proj)
     }
   } catch {}
+
+  // 2. Scan project-local sessions: <realPath>/.legna/sessions/*.jsonl
+  //    Use scanProjects() to find all known project paths
+  for (const p of scanProjects()) {
+    if (!p.path || !p.exists) continue
+    const localDir = join(p.path, '.legna', 'sessions')
+    if (existsSync(localDir)) {
+      scanDir(localDir, p.id, p.path)
+    }
+  }
+
   sessions.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1))
   return json(sessions.slice(0, limit))
 }
