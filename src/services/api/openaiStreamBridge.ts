@@ -51,7 +51,8 @@ function mapFinishReason(reason: string | null): string {
     case 'length': return 'max_tokens'
     case 'tool_calls': return 'tool_use'
     case 'function_call': return 'tool_use' // deprecated but some providers still use it
-    case 'content_filter': return 'end_turn'
+    case 'content_filter': return 'content_filter' // MiMo/DeepSeek content safety
+    case 'repetition_truncation': return 'end_turn' // MiMo repetition detection
     default: return 'end_turn'
   }
 }
