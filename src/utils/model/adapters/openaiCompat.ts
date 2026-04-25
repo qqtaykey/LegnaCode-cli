@@ -93,9 +93,10 @@ function convertAnthropicToOpenAI(msg: AnthropicMessage): OpenAIMessage[] {
   // assistant with tool_use blocks
   const toolUses = content.filter((b: any) => b.type === 'tool_use')
   const textParts = content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
+  const thinkingParts = content.filter((b: any) => b.type === 'thinking').map((b: any) => b.thinking ?? '').join('')
 
   if (toolUses.length > 0 && role === 'assistant') {
-    return [{
+    const msg: OpenAIMessage = {
       role: 'assistant',
       content: textParts || null,
       tool_calls: toolUses.map((b: any) => ({
@@ -106,15 +107,23 @@ function convertAnthropicToOpenAI(msg: AnthropicMessage): OpenAIMessage[] {
           arguments: typeof b.input === 'string' ? b.input : JSON.stringify(b.input ?? {}),
         },
       })),
-    }]
+    }
+    // DeepSeek/Kimi OpenAI endpoints require reasoning_content to be passed back
+    if (thinkingParts) msg.reasoning_content = thinkingParts
+    return [msg]
   }
 
   // Default: concatenate text blocks
   const text = content
-    .filter((b: any) => b.type === 'text' || b.type === 'thinking')
-    .map((b: any) => b.text ?? b.thinking ?? '')
+    .filter((b: any) => b.type === 'text')
+    .map((b: any) => b.text ?? '')
     .join('')
-  return [{ role, content: text || '' }]
+  const result: OpenAIMessage = { role, content: text || '' }
+  // Pass back reasoning_content for assistant messages with thinking
+  if (role === 'assistant' && thinkingParts) {
+    result.reasoning_content = thinkingParts
+  }
+  return [result]
 }
 
 /** Convert Anthropic tool schema to OpenAI function calling format */
