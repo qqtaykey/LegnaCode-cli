@@ -52,7 +52,10 @@ function mapFinishReason(reason: string | null): string {
     case 'tool_calls': return 'tool_use'
     case 'function_call': return 'tool_use' // deprecated but some providers still use it
     case 'content_filter': return 'content_filter' // MiMo/DeepSeek content safety
+    case 'sensitive': return 'content_filter' // GLM content safety
     case 'repetition_truncation': return 'end_turn' // MiMo repetition detection
+    case 'network_error': return 'end_turn' // GLM inference error
+    case 'model_context_window_exceeded': return 'max_tokens' // GLM context overflow
     default: return 'end_turn'
   }
 }
