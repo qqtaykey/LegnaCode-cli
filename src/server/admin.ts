@@ -163,6 +163,24 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     return handleProfileSwitch(dir, filename)
   }
 
+  // POST /api/:scope/profiles/clone
+  if (sub === 'profiles/clone' && method === 'POST') {
+    const { source, target } = await req.json() as { source: string; target: string }
+    if (!target || !target.startsWith('settings') || !target.endsWith('.json')) {
+      return err('文件名必须以 settings 开头，.json 结尾', 400)
+    }
+    const srcPath = join(dir, source)
+    const dstPath = join(dir, target)
+    if (!existsSync(srcPath)) return err('源配置不存在', 404)
+    if (existsSync(dstPath)) return err('目标文件已存在', 409)
+    try {
+      copyFileSync(srcPath, dstPath)
+      return json({ ok: true, filename: target })
+    } catch (e: any) {
+      return err(e.message, 500)
+    }
+  }
+
   // GET /api/:scope/sessions
   if (sub === 'sessions' && method === 'GET') {
     const limit = parseInt(url.searchParams.get('limit') || '50', 10)

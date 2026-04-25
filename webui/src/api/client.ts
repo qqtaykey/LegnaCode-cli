@@ -43,6 +43,13 @@ export function switchProfile(scope: Scope, filename: string) {
   })
 }
 
+export function cloneProfile(scope: Scope, source: string, target: string) {
+  return request<{ ok: boolean; filename: string }>(`/api/${scope}/profiles/clone`, {
+    method: 'POST',
+    body: JSON.stringify({ source, target }),
+  })
+}
+
 export interface Session {
   id: string
   project: string
