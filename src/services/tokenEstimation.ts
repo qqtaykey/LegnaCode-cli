@@ -147,6 +147,14 @@ export async function countMessagesTokensWithAPI(
       const betas = getModelBetas(model)
       const containsThinking = hasThinkingBlocks(messages)
 
+      // Third-party providers (Kiro Gateway, etc.) don't support /v1/messages/count_tokens.
+      // Calling it returns 403 and may trigger rate-limiting on subsequent requests.
+      // Skip count_tokens when base URL is not Anthropic's official endpoint.
+      const baseUrl = process.env.ANTHROPIC_BASE_URL || ''
+      if (baseUrl && !baseUrl.includes('anthropic.com')) {
+        return null
+      }
+
       if (getAPIProvider() === 'bedrock') {
         // @anthropic-sdk/bedrock-sdk doesn't support countTokens currently
         return countTokensWithBedrock({
