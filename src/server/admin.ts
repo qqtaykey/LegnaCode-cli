@@ -181,6 +181,23 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     }
   }
 
+  // POST /api/:scope/profiles/create — create new profile with preset content
+  if (sub === 'profiles/create' && method === 'POST') {
+    const { filename, content } = await req.json() as { filename: string; content: Record<string, any> }
+    if (!filename || !filename.startsWith('settings') || !filename.endsWith('.json')) {
+      return err('文件名必须以 settings 开头，.json 结尾', 400)
+    }
+    const dstPath = join(dir, filename)
+    if (existsSync(dstPath)) return err('目标文件已存在', 409)
+    try {
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(dstPath, JSON.stringify(content, null, 2) + '\n')
+      return json({ ok: true, filename })
+    } catch (e: any) {
+      return err(e.message, 500)
+    }
+  }
+
   // GET /api/:scope/sessions
   if (sub === 'sessions' && method === 'GET') {
     const limit = parseInt(url.searchParams.get('limit') || '50', 10)
@@ -418,6 +435,19 @@ function handleMigrate(body: any): Response {
         }
         writeFileSync(dstFile, JSON.stringify(dstData, null, 2) + '\n')
       }
+
+      // Auto-fill ANTHROPIC_MODEL from ANTHROPIC_DEFAULT_OPUS_MODEL if missing.
+      // Claude Code configs typically set OPUS_MODEL but not ANTHROPIC_MODEL.
+      // Without ANTHROPIC_MODEL, the CLI defaults to claude-opus-4-6 which
+      // fails on third-party providers.
+      try {
+        const dstData = JSON.parse(readFileSync(dstFile, 'utf-8'))
+        if (dstData.env && dstData.env.ANTHROPIC_DEFAULT_OPUS_MODEL && !dstData.env.ANTHROPIC_MODEL) {
+          dstData.env.ANTHROPIC_MODEL = dstData.env.ANTHROPIC_DEFAULT_OPUS_MODEL
+          writeFileSync(dstFile, JSON.stringify(dstData, null, 2) + '\n')
+          migrated.push('env.ANTHROPIC_MODEL (auto-filled from OPUS)')
+        }
+      } catch {}
     }
 
     // Migrate sessions (projects/ directory)

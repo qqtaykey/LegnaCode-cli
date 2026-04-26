@@ -2,6 +2,69 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [1.9.9] - 2026-04-26
+
+### 新功能
+
+- **Admin 预设配置模板** — "从预设创建"按钮，内置 7 家 Provider 模板。创建后自动切换。
+- **ANTHROPIC_MODEL 设置字段** — 最高优先级模型覆盖。
+- **后端 profiles/create API** — `POST /api/:scope/profiles/create { filename, content }`。
+
+### 修复
+
+- **Bash Exit Code 65 — 彻底修复** — 禁用所有 sandbox 包装路径：native Rust addon（`sandboxAddon = null`）、Seatbelt fallback（`wrapCommand` 直接返回 `none`）、`sandbox-adapter.ts` native 路径。`(deny default)` Seatbelt profile 阻止了所有命令。命令安全由 TS 权限层处理。
+- **迁移自动补全 ANTHROPIC_MODEL** — 从 Claude Code 迁移时自动用 OPUS 值填充。
+- **compile-all.ts 自动复制 Addon** — 从 `src/native/` 和 `native/*/` 双源复制。
+
+## [1.9.5] - 2026-04-26
+
+### 新功能
+
+- **Admin 预设配置模板** — 配置文件面板新增"从预设创建"按钮，内置 7 家 Provider 模板（DeepSeek、Kimi、GLM、Qwen、MiniMax、MiMo、Anthropic）。每个预设预填 `env.ANTHROPIC_AUTH_TOKEN`、`ANTHROPIC_BASE_URL`、`ANTHROPIC_MODEL`、`ANTHROPIC_DEFAULT_HAIKU/SONNET/OPUS_MODEL`。创建后自动切换。
+- **ANTHROPIC_MODEL 设置字段** — Admin 设置面板新增 `env.ANTHROPIC_MODEL`（"指定模型 — 覆盖所有层级"），这是最高优先级的模型覆盖。与 `model` 别名字段（sonnet/opus/haiku）分开显示。
+- **后端 profiles/create API** — `POST /api/:scope/profiles/create { filename, content }` 创建新配置文件并写入预设内容。
+
+### 修复
+
+- **迁移自动补全 ANTHROPIC_MODEL** — 从 Claude Code 迁移的配置如果有 `ANTHROPIC_DEFAULT_OPUS_MODEL` 但没有 `ANTHROPIC_MODEL`，迁移时自动用 OPUS 的值填充。否则 CLI 默认使用 `claude-opus-4-6`，在第三方 Provider 上会失败。
+
+## [1.9.4] - 2026-04-25
+
+### 修复
+
+- **macOS Seatbelt 沙盒重写** — 将 `(deny default)` 替换为 `(allow default)` 策略。沙盒现在仅拒绝对关键系统路径（`/System`、`/usr`、`/bin`、`/sbin`）和用户配置的 `protected_paths` 的写入。普通 shell 命令不再受阻——彻底消除 exit code 65。
+- **Shell.ts 沙盒返回路径** — 恢复了 v1.9.3 中意外删除的沙盒成功执行返回语句，该问题导致命令跳过沙盒结果并重新以无沙盒方式执行。
+
+## [1.9.3] - 2026-04-25
+
+### 新功能
+
+- **OpenAI 兼容 API 路由** — 新增 `apiFormat` 设置项（'anthropic' | 'openai' | 自动），支持将请求路由到 OpenAI Chat Completions API。每个适配器声明 `apiFormat: 'auto'`，根据 base URL 自动推断：`/anthropic` 后缀走 Anthropic SDK，否则走 OpenAI fetch 桥接。6 个国产适配器默认自动模式。
+- **OpenAI 流式桥接** — 新建 `openaiStreamBridge.ts`，将 OpenAI SSE 流转换为 Anthropic 事件格式。处理 `delta.content`、`delta.tool_calls`、`delta.reasoning_content`（DeepSeek/Kimi/MiMo）、`delta.reasoning_details`（MiniMax）。下游代码（工具执行、会话存储）看到完全相同的事件——零改动。
+- **Admin 配置复制** — 配置文件列表每个卡片新增"复制"按钮，内联表单自动带 `settings-` 前缀和 `.json` 后缀。后端：`POST /api/:scope/profiles/clone`。
+- **Admin API 路由选择器** — 设置面板新增"API 路由模式"下拉框：自动（根据 URL 推断）、Anthropic、OpenAI。
+
+### 改进
+
+- **适配器深度对齐** — 7 个适配器（DeepSeek、MiniMax、Qwen、GLM、Kimi、MiMo、OpenAICompat）全部按官方 API 文档更新：
+  - DeepSeek：双端点、模型列表（v4-flash/v4-pro）、保留 `output_config.effort`、`reasoning_content` 回传
+  - MiniMax：双端点（中国/全球 + Token Plan）、`reasoning_details` 数组格式、`stripUnsupportedContentBlocks`
+  - Qwen/百炼：北京/新加坡/Coding Plan URL、`coding.dashscope.aliyuncs.com` 主机匹配、qwen3.6-* 前缀
+  - GLM/智谱：OpenAI + Anthropic + Coding Plan URL、`sensitive`/`network_error`/`model_context_window_exceeded` 终止原因、`cached_tokens` 支持
+  - Kimi/月之暗面：kimi-k2.6（thinking、不可修改 temp/top_p）、`moonshot-v1-*` 前缀、Preserved Thinking（`thinking.keep: "all"`）
+  - MiMo/小米：mimo-v2.5-pro/v2.5 模型、Token Plan 主机、`repetition_truncation` 终止原因
+- **OpenAI SDK 类型对齐** — 参照 OpenAI SDK v6.34.0 类型定义修正：`Delta.ToolCall.index` 必填、`Delta.content` 可空、`function_call` 废弃终止原因、`stream_options.include_usage`、`Delta.refusal` 处理。
+- **共享适配器工具** — `stripUnsupportedContentBlocks` 过滤 image/document/server_tool_use/redacted_thinking。`forceAutoToolChoice` 删除 `disable_parallel_tool_use`。`stripUnsupportedFields` 保留 `output_config.effort`。
+- **API Key 解析** — OpenAI 桥接现在使用 `getAnthropicApiKey()` 统一认证路径（settings.json → 环境变量 → keychain），不再直接读 `process.env`。
+
+### 修复
+
+- **Bash Exit Code 65** — macOS Seatbelt sandbox 因 profile 过于严格返回 exit code 65。`Shell.ts` 现在检测到 65 后回退到普通 spawn 路径。
+- **Admin 配置文件** — `GET/PUT /api/:scope/settings` 现在读写活跃 profile 文件（通过 `getActiveProfile()`），不再硬编码 `settings.json`。
+- **设计提示词误触发** — 收窄中文关键词检测范围，将宽泛的单字词（界面、组件、页面）替换为复合词（前端开发、UI组件、页面设计）。
+- **Computer Use 自动启用** — 移除 `DEFAULT_DISABLED_BUILTIN` 白名单机制，不再需要手动 opt-in。
+- **reasoning_content 回传** — DeepSeek/Kimi OpenAI 端点要求 thinking 模式的 `reasoning_content` 必须回传。`convertAnthropicToOpenAI` 现在提取 thinking blocks 并设置到 assistant 消息上。
+
 ## [1.9.2] - 2026-04-25
 
 ### 新功能
