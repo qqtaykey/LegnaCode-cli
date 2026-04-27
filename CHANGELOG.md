@@ -4,6 +4,34 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.4] - 2026-04-27
+
+### Features
+
+- **OpenAI Responses API Bridge** — New `apiFormat: "responses"` setting enables Codex-compatible providers (`/v1/responses` wire format). Full streaming + non-streaming support with Anthropic event translation.
+- **Admin Config Hot-Reload** — Saving an active profile via inline editor now syncs to `settings.json`, triggering CLI hot-reload without profile switch.
+- **Admin UI Auto-Refresh** — Profile list refreshes automatically after save, showing updated endpoint/model info immediately.
+
+### Fixes
+
+- **getGlobalSettings Dead Code** — All 3 call sites (`claude.ts`, `adapters/index.ts`, `gates.ts`) referenced a non-existent function. Fixed to use `getInitialSettings()` from settings.ts. This makes `kiroGateway` toggle actually work.
+
+## [2.0.3] - 2026-04-27
+
+### Features
+
+- **Kiro Gateway Client-Side History Optimization** — New `kiroGateway` setting enables client-side history compression aligned with Gateway's converter.py (thinking/tool_result truncation, schema normalization).
+- **Admin Profile Inline Editing** — Each profile card has an "编辑" button for inline settings editing. Profile-specific API: `GET/PUT /api/:scope/profiles/:filename`.
+- **Admin Preset Templates** — 7 provider presets (DeepSeek, Kimi, GLM, Qwen, MiniMax, MiMo, Anthropic).
+- **ANTHROPIC_MODEL Settings Field** — Highest-priority model override in admin settings panel.
+
+### Fixes
+
+- **Model Allowlist Removed** — `isModelAllowed()` always returns true. Third-party providers use arbitrary model names that would never pass a Claude-centric allowlist.
+- **count_tokens API Disabled** — Both `countMessagesTokensWithAPI` and `countTokensViaHaikuFallback` return null unconditionally. The `/v1/messages/count_tokens` endpoint is not supported by third-party providers and causes 403 errors.
+- **Bash Sandbox Removed** — Disabled native sandbox addon, Seatbelt fallback, and sandbox-adapter native path.
+- **Migration Auto-Fill ANTHROPIC_MODEL** — Auto-fills from OPUS value when migrating Claude Code configs.
+
 ## [1.9.9] - 2026-04-26
 
 ### Features

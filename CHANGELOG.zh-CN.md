@@ -2,6 +2,34 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.4] - 2026-04-27
+
+### 新功能
+
+- **OpenAI Responses API 桥接** — 新增 `apiFormat: "responses"` 设置，支持 Codex 兼容中转站（`/v1/responses` 协议）。完整流式 + 非流式支持，自动转换为 Anthropic 事件流。
+- **Admin 配置热加载** — 内联编辑活跃 profile 保存后自动同步 `settings.json`，CLI 无需切换即可生效。
+- **Admin UI 自动刷新** — 保存后 profile 列表自动刷新，立即显示更新后的端点/模型信息。
+
+### 修复
+
+- **getGlobalSettings 死代码修复** — 3 处调用（`claude.ts`、`adapters/index.ts`、`gates.ts`）引用了不存在的函数，改为 `getInitialSettings()`。`kiroGateway` 开关现在真正生效。
+
+## [2.0.3] - 2026-04-27
+
+### 新功能
+
+- **Kiro Gateway 客户端历史压缩** — 新增 `kiroGateway` 设置，对齐 Gateway converter.py 压缩逻辑（thinking/tool_result 截断、schema 精简）。
+- **Admin 配置文件内联编辑** — 每个 profile 卡片新增"编辑"按钮。Profile 读写 API：`GET/PUT /api/:scope/profiles/:filename`。
+- **Admin 预设模板** — 7 家 Provider 预设（DeepSeek、Kimi、GLM、Qwen、MiniMax、MiMo、Anthropic）。
+- **ANTHROPIC_MODEL 设置字段** — 最高优先级模型覆盖。
+
+### 修复
+
+- **模型白名单移除** — `isModelAllowed()` 始终返回 true。第三方 Provider 使用任意模型名。
+- **count_tokens API 禁用** — `countMessagesTokensWithAPI` 和 `countTokensViaHaikuFallback` 无条件返回 null。第三方不支持 `/v1/messages/count_tokens`，调用会导致 403。
+- **Bash Sandbox 移除** — 禁用 native sandbox addon、Seatbelt fallback、sandbox-adapter native 路径。
+- **迁移自动补全 ANTHROPIC_MODEL** — 从 Claude Code 迁移时自动用 OPUS 值填充。
+
 ## [1.9.9] - 2026-04-26
 
 ### 新功能
