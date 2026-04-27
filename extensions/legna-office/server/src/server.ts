@@ -4,6 +4,7 @@ import * as http from 'http';
 import * as os from 'os';
 import * as path from 'path';
 
+import { pushMessage, getAllMessages } from './conversationStore.js';
 import {
   HOOK_API_PREFIX,
   MAX_HOOK_BODY_SIZE,
@@ -26,6 +27,36 @@ export interface ServerConfig {
 /** Callback invoked when a hook event is received from a provider's hook script. */
 type HookEventCallback = (providerId: string, event: Record<string, unknown>) => void;
 
+/** Minimal WebSocket frame writer (RFC 6455). No external deps. */
+function wsFrame(data: string): Buffer {
+  const payload = Buffer.from(data, 'utf-8');
+  const len = payload.length;
+  let header: Buffer;
+  if (len < 126) {
+    header = Buffer.alloc(2);
+    header[0] = 0x81; // FIN + text opcode
+    header[1] = len;
+  } else if (len < 65536) {
+    header = Buffer.alloc(4);
+    header[0] = 0x81;
+    header[1] = 126;
+    header.writeUInt16BE(len, 2);
+  } else {
+    header = Buffer.alloc(10);
+    header[0] = 0x81;
+    header[1] = 127;
+    header.writeBigUInt64BE(BigInt(len), 2);
+  }
+  return Buffer.concat([header, payload]);
+}
+
+/** Unmask a WebSocket frame payload in-place (RFC 6455 §5.3). */
+function wsUnmask(data: Buffer, mask: Buffer): void {
+  for (let i = 0; i < data.length; i++) {
+    data[i] ^= mask[i & 3];
+  }
+}
+
 /**
  * HTTP server that receives hook events from CLI tool hook scripts.
  *
@@ -45,6 +76,8 @@ export class LegnaOfficeServer {
   private ownsServer = false;
   private callback: HookEventCallback | null = null;
   private startTime = Date.now();
+  private wsClients = new Set<import('net').Socket>();
+  private agentStates = new Map<string, Record<string, unknown>>();
 
   /** Register a callback for incoming hook events from any provider. */
   onHookEvent(callback: HookEventCallback): void {
@@ -80,6 +113,12 @@ export class LegnaOfficeServer {
 
       this.server.on('error', reject);
       this.server.setTimeout(5000);
+
+      // WebSocket upgrade handler
+      this.server.on('upgrade', (req, socket, head) => {
+        if (req.url !== '/ws') { socket.destroy(); return; }
+        this.handleWsUpgrade(req, socket, head);
+      });
 
       this.server.listen(0, '127.0.0.1', () => {
         const addr = this.server?.address();
@@ -129,6 +168,11 @@ export class LegnaOfficeServer {
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
     const url = req.url ?? '';
 
+    // CORS for admin panel
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
     // Health endpoint (no auth required)
     if (req.method === 'GET' && url === '/api/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -139,6 +183,22 @@ export class LegnaOfficeServer {
           pid: process.pid,
         }),
       );
+      return;
+    }
+
+    // State endpoint: current agent states + recent messages
+    if (req.method === 'GET' && url === '/api/state') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        agents: Array.from(this.agentStates.values()),
+        messages: getAllMessages().slice(-50),
+      }));
+      return;
+    }
+
+    // Conversation endpoint: POST /api/conversation (auth required)
+    if (req.method === 'POST' && url === '/api/conversation') {
+      this.handleConversationRequest(req, res);
       return;
     }
 
@@ -210,6 +270,113 @@ export class LegnaOfficeServer {
         res.end('invalid json');
       }
     });
+  }
+
+  /** Handle POST /api/conversation. Stores message and broadcasts to WebSocket clients. */
+  private handleConversationRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const authHeader = req.headers['authorization'] ?? '';
+    const expectedToken = `Bearer ${this.config?.token ?? ''}`;
+    const authBuf = Buffer.from(authHeader);
+    const expectedBuf = Buffer.from(expectedToken);
+    if (authBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(authBuf, expectedBuf)) {
+      res.writeHead(401); res.end('unauthorized'); return;
+    }
+
+    let body = '';
+    let bodySize = 0;
+    let responded = false;
+
+    req.on('data', (chunk: Buffer) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_HOOK_BODY_SIZE && !responded) {
+        responded = true; res.writeHead(413); res.end('payload too large'); req.destroy(); return;
+      }
+      if (!responded) body += chunk.toString();
+    });
+
+    req.on('end', () => {
+      if (responded) return;
+      try {
+        const data = JSON.parse(body) as Record<string, unknown>;
+        const sessionId = String(data.session_id ?? 'unknown');
+        const role = data.role as 'user' | 'assistant' | 'tool';
+        const content = String(data.content ?? '');
+        const msg = pushMessage(sessionId, role, content, {
+          toolName: data.tool_name as string | undefined,
+          timestamp: data.timestamp as number | undefined,
+        });
+        this.broadcast({ type: 'conversation', message: msg });
+        res.writeHead(200); res.end('ok');
+      } catch {
+        res.writeHead(400); res.end('invalid json');
+      }
+    });
+  }
+
+  /** Handle WebSocket upgrade on /ws (RFC 6455 handshake). */
+  private handleWsUpgrade(req: http.IncomingMessage, socket: import('net').Socket, _head: Buffer): void {
+    const key = req.headers['sec-websocket-key'];
+    if (!key) { socket.destroy(); return; }
+
+    const accept = crypto.createHash('sha1')
+      .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11CE85')
+      .digest('base64');
+
+    socket.write(
+      'HTTP/1.1 101 Switching Protocols\r\n' +
+      'Upgrade: websocket\r\n' +
+      'Connection: Upgrade\r\n' +
+      `Sec-WebSocket-Accept: ${accept}\r\n` +
+      '\r\n',
+    );
+
+    this.wsClients.add(socket);
+    socket.on('close', () => this.wsClients.delete(socket));
+    socket.on('error', () => { this.wsClients.delete(socket); socket.destroy(); });
+
+    // Handle incoming frames (ping/pong, close)
+    socket.on('data', (buf: Buffer) => {
+      if (buf.length < 2) return;
+      const opcode = buf[0] & 0x0f;
+      if (opcode === 0x08) { // close
+        this.wsClients.delete(socket);
+        socket.end(Buffer.from([0x88, 0x00]));
+      } else if (opcode === 0x09) { // ping → pong
+        const pong = Buffer.from(buf);
+        pong[0] = (pong[0] & 0xf0) | 0x0a;
+        socket.write(pong);
+      }
+    });
+
+    // Send current state snapshot on connect
+    const snapshot = {
+      type: 'snapshot',
+      agents: Array.from(this.agentStates.values()),
+      messages: getAllMessages().slice(-50),
+    };
+    socket.write(wsFrame(JSON.stringify(snapshot)));
+  }
+
+  /** Broadcast a JSON message to all connected WebSocket clients. */
+  broadcast(data: Record<string, unknown>): void {
+    if (this.wsClients.size === 0) return;
+    const frame = wsFrame(JSON.stringify(data));
+    for (const client of this.wsClients) {
+      try { client.write(frame); } catch { this.wsClients.delete(client); }
+    }
+  }
+
+  /** Update an agent's state and broadcast the change. */
+  updateAgentState(agentId: string, state: Record<string, unknown>): void {
+    const agent = { id: agentId, ...state, updatedAt: Date.now() };
+    this.agentStates.set(agentId, agent);
+    this.broadcast({ type: 'agentUpdate', agent });
+  }
+
+  /** Remove an agent and broadcast the removal. */
+  removeAgent(agentId: string): void {
+    this.agentStates.delete(agentId);
+    this.broadcast({ type: 'agentRemoved', agentId });
   }
 
   /** Returns the absolute path to ~/.legna-office/server.json. */

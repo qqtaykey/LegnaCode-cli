@@ -3,7 +3,7 @@
  *
  * Lightweight office visualization embedded in legna admin.
  * Connects to LegnaOfficeServer via WebSocket for real-time updates.
- * Falls back to a status display when server is not running.
+ * Handles snapshot on connect, then incremental agentUpdate/conversation/agentRemoved.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -27,8 +27,8 @@ interface ConversationMessage {
 type ConnectionState = 'connecting' | 'connected' | 'disconnected';
 
 const STATE_EMOJI: Record<string, string> = {
-  idle: '💤', writing: '⌨️', researching: '🔍',
-  executing: '⚡', syncing: '🔄', error: '❌',
+  idle: '\u{1F4A4}', writing: '\u{2328}\u{FE0F}', researching: '\u{1F50D}',
+  executing: '\u{26A1}', syncing: '\u{1F504}', error: '\u{274C}',
 };
 
 const STATE_LABEL_ZH: Record<string, string> = {
@@ -43,20 +43,30 @@ export function OfficePanel() {
   const [showChat, setShowChat] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    // Try connecting to LegnaOfficeServer WebSocket
-    const port = 3457; // Default office server port
+    if (wsRef.current) return;
+    const port = 3457;
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
     setConn('connecting');
 
     ws.onopen = () => setConn('connected');
-    ws.onclose = () => { setConn('disconnected'); wsRef.current = null; };
-    ws.onerror = () => { setConn('disconnected'); ws.close(); };
+    ws.onclose = () => {
+      setConn('disconnected');
+      wsRef.current = null;
+      // Auto-reconnect after 5s
+      reconnectTimer.current = setTimeout(() => connect(), 5000);
+    };
+    ws.onerror = () => { ws.close(); };
     ws.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (data.type === 'agentUpdate') {
+        if (data.type === 'snapshot') {
+          // Initial state on connect
+          setAgents((data.agents as AgentStatus[]) ?? []);
+          setMessages((data.messages as ConversationMessage[]) ?? []);
+        } else if (data.type === 'agentUpdate') {
           setAgents(prev => {
             const idx = prev.findIndex(a => a.id === data.agent.id);
             if (idx >= 0) { const next = [...prev]; next[idx] = data.agent; return next; }
@@ -74,7 +84,10 @@ export function OfficePanel() {
 
   useEffect(() => {
     connect();
-    return () => { wsRef.current?.close(); };
+    return () => {
+      wsRef.current?.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
   }, [connect]);
 
   useEffect(() => {

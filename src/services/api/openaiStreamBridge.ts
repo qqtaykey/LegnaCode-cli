@@ -163,7 +163,7 @@ export async function* openAIStreamingRequest(
       yield {
         type: 'content_block_delta',
         index: contentBlockIndex,
-        delta: { type: 'thinking_delta', thinking: delta.reasoning_content },
+        delta: { type: 'thinking_delta', thinking: thinkingText },
       }
     }
 
@@ -318,6 +318,12 @@ export async function openAINonStreamingRequest(
   const choice = data.choices?.[0]
   const message = choice?.message ?? {}
   const content: any[] = []
+
+  // Reasoning/thinking content (DeepSeek, Kimi, etc.)
+  // Must appear before text so thinking blocks precede text blocks in Anthropic format.
+  if (message.reasoning_content) {
+    content.push({ type: 'thinking', thinking: message.reasoning_content, signature: '' })
+  }
 
   // Non-streaming: refusal field
   if (message.refusal) {

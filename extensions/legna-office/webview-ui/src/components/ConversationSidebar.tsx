@@ -57,3 +57,49 @@ export function ConversationSidebar({ messages, expanded, onToggle, locale }: Pr
       </button>
     );
   }
+
+  return (
+    <div style={{
+      position: 'absolute', right: 0, top: 0, bottom: 0, width: 320, zIndex: 90,
+      background: '#0f172a', borderLeft: '1px solid #1e293b',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 12px', borderBottom: '1px solid #1e293b',
+      }}>
+        <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{l.title}</span>
+        <button onClick={onToggle} style={{
+          background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12,
+        }}>{l.collapse}</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+        {messages.length === 0 ? (
+          <div style={{ color: '#475569', fontSize: 12, textAlign: 'center', marginTop: 32 }}>
+            {l.empty}
+          </div>
+        ) : messages.map(msg => (
+          <div key={msg.id} style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <span style={{ color: ROLE_COLORS[msg.role] ?? '#94a3b8', fontSize: 11, fontWeight: 600 }}>
+                {msg.role === 'user' ? l.user : msg.role === 'assistant' ? l.assistant : `${l.tool}: ${msg.toolName ?? ''}`}
+              </span>
+              <span style={{ color: '#334155', fontSize: 10 }}>
+                {new Date(msg.timestamp).toLocaleTimeString()}
+              </span>
+            </div>
+            <div style={{
+              color: '#cbd5e1', fontSize: 12, lineHeight: 1.4,
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              maxHeight: 80, overflow: 'hidden',
+            }}>
+              {msg.content.length > 300 ? msg.content.slice(0, 300) + '...' : msg.content}
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+}
