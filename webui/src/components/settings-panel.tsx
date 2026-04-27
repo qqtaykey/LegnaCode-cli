@@ -6,6 +6,7 @@ interface Props {
   scope: Scope
   targetFile?: string  // specific profile filename to edit
   onClose?: () => void // callback to close inline editor
+  onSave?: () => void  // callback after successful save
 }
 
 interface SettingField {
@@ -22,6 +23,7 @@ const FIELDS: SettingField[] = [
     { value: '', label: '自动 (根据 URL 推断)' },
     { value: 'anthropic', label: 'Anthropic Messages API' },
     { value: 'openai', label: 'OpenAI Chat Completions API' },
+    { value: 'responses', label: 'OpenAI Responses API (Codex)' },
   ]},
   { key: 'env.ANTHROPIC_BASE_URL', label: 'API 端点', type: 'text', nested: 'env.ANTHROPIC_BASE_URL' },
   { key: 'env.ANTHROPIC_AUTH_TOKEN', label: 'API Key', type: 'password', nested: 'env.ANTHROPIC_AUTH_TOKEN' },
@@ -61,7 +63,7 @@ function setNestedValue(obj: any, path: string, value: any): any {
   return clone
 }
 
-export function SettingsPanel({ scope, targetFile, onClose }: Props) {
+export function SettingsPanel({ scope, targetFile, onClose, onSave }: Props) {
   const [data, setData] = useState<Record<string, unknown>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -95,6 +97,7 @@ export function SettingsPanel({ scope, targetFile, onClose }: Props) {
         await saveSettings(scope, data)
       }
       setMsg('已保存')
+      onSave?.()
       setTimeout(() => setMsg(''), 2000)
     } catch (e: any) {
       setMsg(`保存失败: ${e.message}`)

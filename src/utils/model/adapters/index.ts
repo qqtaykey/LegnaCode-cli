@@ -93,12 +93,12 @@ export function getModelAdapter(model: string): ModelAdapter | null {
  *   3. auto-detect from ANTHROPIC_BASE_URL (/anthropic suffix → anthropic, else openai)
  *   4. default: 'anthropic'
  */
-function resolveApiFormat(adapter: ModelAdapter | null): 'anthropic' | 'openai' {
+function resolveApiFormat(adapter: ModelAdapter | null): 'anthropic' | 'openai' | 'responses' {
   // 1. User override from settings
   try {
-    const { getGlobalSettings } = require('../../envUtils.js')
-    const settings = getGlobalSettings?.() ?? {}
-    if (settings.apiFormat === 'openai' || settings.apiFormat === 'anthropic') {
+    const { getInitialSettings } = require('../../settings/settings.js')
+    const settings = getInitialSettings?.() ?? {}
+    if (settings.apiFormat === 'openai' || settings.apiFormat === 'anthropic' || settings.apiFormat === 'responses') {
       return settings.apiFormat
     }
   } catch {}
@@ -108,7 +108,7 @@ function resolveApiFormat(adapter: ModelAdapter | null): 'anthropic' | 'openai' 
   const declared = adapter.apiFormat ?? 'anthropic'
 
   // 2. Explicit adapter declaration
-  if (declared === 'anthropic' || declared === 'openai') return declared
+  if (declared === 'anthropic' || declared === 'openai' || declared === 'responses') return declared
 
   // 3. Auto-detect from base URL
   if (declared === 'auto') {
@@ -133,8 +133,12 @@ export function applyModelAdapter(params: Record<string, any>): Record<string, a
   let result = adapter ? adapter.transformParams(params) : params
 
   // If adapter already set __openaiCompat (e.g. OpenAICompatAdapter), skip
-  if (!result.__openaiCompat && resolveApiFormat(adapter) === 'openai') {
+  const format = resolveApiFormat(adapter)
+  if (!result.__openaiCompat && !result.__responsesApi && format === 'openai') {
     result = { ...result, __openaiCompat: true }
+  }
+  if (!result.__responsesApi && format === 'responses') {
+    result = { ...result, __responsesApi: true }
   }
 
   return result

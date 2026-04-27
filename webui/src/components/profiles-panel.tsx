@@ -272,7 +272,7 @@ export function ProfilesPanel({ scope }: Props) {
         </div>
         {editing === p.filename && (
           <div className="ml-2 border-l-2 border-yellow-600/50 pl-3">
-            <SettingsPanel scope={scope} targetFile={p.filename} onClose={() => setEditing(null)} />
+            <SettingsPanel scope={scope} targetFile={p.filename} onClose={() => setEditing(null)} onSave={load} />
           </div>
         )}
         </div>

@@ -641,11 +641,12 @@ export const SettingsSchema = lazySchema(() =>
         .optional()
         .describe('Controls the output style for assistant responses'),
       apiFormat: z
-        .enum(['anthropic', 'openai'])
+        .enum(['anthropic', 'openai', 'responses'])
         .optional()
         .describe(
           'API format for model communication. "anthropic" uses Anthropic Messages API (default). ' +
-            '"openai" uses OpenAI Chat Completions API format — requests are translated and responses converted back.',
+            '"openai" uses OpenAI Chat Completions API format. ' +
+            '"responses" uses OpenAI Responses API format (for Codex-compatible providers).',
         ),
       kiroGateway: z
         .boolean()

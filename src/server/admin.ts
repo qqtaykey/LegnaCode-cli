@@ -218,6 +218,11 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
       const body = await req.json()
       mkdirSync(dir, { recursive: true })
       writeFileSync(join(dir, filename), JSON.stringify(body, null, 2) + '\n')
+      // 如果编辑的是当前活跃 profile，同步到 settings.json 让 CLI 热加载
+      const activeProfile = getActiveProfile(dir)
+      if (filename === activeProfile && filename !== 'settings.json') {
+        writeFileSync(join(dir, 'settings.json'), JSON.stringify(body, null, 2) + '\n')
+      }
       return json({ ok: true })
     }
   }

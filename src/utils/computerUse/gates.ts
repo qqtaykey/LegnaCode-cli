@@ -26,8 +26,8 @@ const DEFAULTS: ChicagoConfig = {
 function readConfig(): ChicagoConfig {
   // Read from settings.json if available, otherwise use defaults
   try {
-    const { getGlobalSettings } = require('../envUtils.js')
-    const settings = getGlobalSettings?.() || {}
+    const { getInitialSettings } = require('../settings/settings.js')
+    const settings = getInitialSettings?.() || {}
     const cuConfig = settings.computerUse || {}
     return { ...DEFAULTS, ...cuConfig }
   } catch {

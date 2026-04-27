@@ -2,6 +2,18 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.4] - 2026-04-27
+
+### 新功能
+
+- **OpenAI Responses API 桥接** — 新增 `apiFormat: "responses"` 设置，支持 Codex 兼容中转站（`/v1/responses` 协议）。完整流式 + 非流式支持，自动转换为 Anthropic 事件流。
+- **Admin 配置热加载** — 内联编辑活跃 profile 保存后自动同步 `settings.json`，CLI 无需切换即可生效。
+- **Admin UI 自动刷新** — 保存后 profile 列表自动刷新，立即显示更新后的端点/模型信息。
+
+### 修复
+
+- **getGlobalSettings 死代码修复** — 3 处调用（`claude.ts`、`adapters/index.ts`、`gates.ts`）引用了不存在的函数，改为 `getInitialSettings()`。`kiroGateway` 开关现在真正生效。
+
 ## [2.0.3] - 2026-04-27
 
 ### 新功能

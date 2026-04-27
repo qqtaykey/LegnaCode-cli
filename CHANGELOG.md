@@ -4,6 +4,18 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.4] - 2026-04-27
+
+### Features
+
+- **OpenAI Responses API Bridge** — New `apiFormat: "responses"` setting enables Codex-compatible providers (`/v1/responses` wire format). Full streaming + non-streaming support with Anthropic event translation.
+- **Admin Config Hot-Reload** — Saving an active profile via inline editor now syncs to `settings.json`, triggering CLI hot-reload without profile switch.
+- **Admin UI Auto-Refresh** — Profile list refreshes automatically after save, showing updated endpoint/model info immediately.
+
+### Fixes
+
+- **getGlobalSettings Dead Code** — All 3 call sites (`claude.ts`, `adapters/index.ts`, `gates.ts`) referenced a non-existent function. Fixed to use `getInitialSettings()` from settings.ts. This makes `kiroGateway` toggle actually work.
+
 ## [2.0.3] - 2026-04-27
 
 ### Features
