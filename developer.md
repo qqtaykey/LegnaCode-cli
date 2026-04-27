@@ -968,3 +968,94 @@ agents/             # 用户 Agent 定义
 - `src/utils/legnaPathResolver.ts` — `PROJECT_FOLDER` / `LEGACY_FOLDER` / `resolveProjectPath()`
 - `src/utils/envUtils.ts` — `getClaudeConfigHomeDir()` → `~/.legna`，`runGlobalMigration()` 单次迁移
 - `src/utils/ensureLegnaGitignored.ts` — 自动将 `.legna/` 加入 `.gitignore`
+
+---
+
+## LegnaCode Office 像素办公室
+
+VS Code 扩展 + Admin WebUI 面板，将 agent 活动可视化为像素办公室场景。
+
+### 架构
+
+```
+CLI 进程 ──► officeEmitter.ts ──► HTTP POST ──► LegnaOfficeServer
+                                                    │
+                                         ┌──────────┴──────────┐
+                                         ▼                     ▼
+                                   VS Code Webview        Admin WebUI
+                                   (postMessage)          (WebSocket)
+```
+
+### 目录结构
+
+```
+extensions/legna-office/
+├── server/src/
+│   ├── server.ts              # HTTP + WebSocket 服务端（RFC 6455）
+│   ├── hookEventHandler.ts    # 事件路由 + session→agent 映射
+│   ├── conversationStore.ts   # 环形缓冲区（每 session 200 条）
+│   ├── provider.ts            # HookProvider 接口
+│   ├── i18n.ts                # 服务端 i18n
+│   └── providers/hook/legna/
+│       ├── legnaProvider.ts   # LegnaCode 原生 provider
+│       └── legnaHookInstaller.ts  # 自动写入 settings
+├── src/                       # VS Code 扩展后端
+├── webview-ui/src/
+│   ├── office/                # Canvas 2D 引擎（角色 FSM、寻路、家具）
+│   ├── components/
+│   │   ├── ConversationSidebar.tsx  # 可折叠对话流
+│   │   └── StatusBubble.ts         # 角色头顶状态气泡
+│   ├── hooks/
+│   │   ├── useExtensionMessages.ts  # VS Code postMessage
+│   │   ├── useServerMessages.ts     # WebSocket（Admin 用）
+│   │   └── useConversation.ts       # 对话状态管理
+│   ├── audio/notificationSounds.ts  # Web Audio 通知音效
+│   ├── demo/demoData.ts             # 独立演示模式
+│   └── i18n/                        # 中英双语
+```
+
+### 通信协议
+
+| 端点 | 方法 | 认证 | 说明 |
+|------|------|------|------|
+| `/api/hooks/:providerId` | POST | Bearer token | Hook 事件 |
+| `/api/conversation` | POST | Bearer token | 对话消息 |
+| `/api/state` | GET | 无 | 当前状态快照 |
+| `/api/layout` | GET/POST | POST 需认证 | 布局持久化 |
+| `/api/join-key` | GET | Bearer token | 获取 join-key |
+| `/ws` | WebSocket | join-key（远程）| 实时推送 |
+
+### Join-Key 认证
+
+- 服务端启动时生成 8 字符 join-key，写入 `~/.legna-office/server.json`
+- 本地 WebSocket 连接（127.0.0.1）免认证
+- 远程连接需在 URL 携带 `?key=<joinKey>`
+- HTTP API 支持 Bearer token 或 `?key=` 查询参数
+
+### Settings
+
+```json
+{
+  "legnaOffice": {
+    "enabled": true,
+    "autoConnect": true
+  }
+}
+```
+
+### CLI 集成
+
+`src/services/officeEmitter.ts` 在 hook 执行函数中被调用（fire-and-forget），读取 `~/.legna-office/server.json` 发现服务端，POST 事件到 `/api/hooks/legna` 和 `/api/conversation`。
+
+### 构建
+
+```bash
+# VS Code 扩展
+cd extensions/legna-office && npm install && npm run build
+
+# Webview UI（开发模式）
+cd extensions/legna-office/webview-ui && npm install && npm run dev
+
+# 打包 VSIX
+cd extensions/legna-office && npx @vscode/vsce package
+```

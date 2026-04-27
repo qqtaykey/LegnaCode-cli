@@ -2,6 +2,26 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.5] - 2026-04-27
+
+### 新功能
+
+- **LegnaCode Office Phase 2-4** — 像素办公室可视化系统完成：
+  - **对话侧边栏** — 可折叠侧边栏，按 agent 实时显示对话流（用户/助手/工具消息 + 时间戳）
+  - **状态气泡** — Canvas 2D 渲染角色头顶气泡，显示当前工具名 + i18n 状态标签
+  - **WebSocket 广播** — RFC 6455 服务端推送，连接时发送快照 + 增量更新
+  - **Admin 面板** — `office-panel.tsx` 嵌入 admin WebUI，自动重连（5 秒定时器）
+  - **Join-Key 认证** — 8 字符可分享密钥，远程 CLI 实例通过密钥加入；本地连接免认证
+  - **布局持久化** — `GET/POST /api/layout` 保存办公室布局到 `~/.legna-office/layout.json`
+  - **通知音效** — Web Audio API 振荡器音调：工具启动、回合结束、错误、权限请求
+  - **演示模式** — 无 CLI 连接时的独立 mock 数据，agent 状态自动循环
+  - **i18n** — 完整中英支持：webview hooks、服务端标签、状态气泡
+  - **Settings** — settings schema 新增 `legnaOffice.enabled` / `legnaOffice.autoConnect`
+
+### 修复
+
+- **DeepSeek reasoning_content 回传修复** — OpenAI 桥接非流式路径完全丢弃了 `message.reasoning_content`，导致后续轮次 400 错误（"reasoning_content must be passed back"）。现在转换为 Anthropic 格式的 thinking block。同时修复流式 delta 使用已解析的 `thinkingText`，兼容 MiniMax 的 `reasoning_details` 格式。
+
 ## [2.0.4] - 2026-04-27
 
 ### 新功能

@@ -968,3 +968,94 @@ agents/             # User agent definitions
 - `src/utils/legnaPathResolver.ts` — `PROJECT_FOLDER` / `LEGACY_FOLDER` / `resolveProjectPath()`
 - `src/utils/envUtils.ts` — `getClaudeConfigHomeDir()` → `~/.legna`, `runGlobalMigration()` one-time migration
 - `src/utils/ensureLegnaGitignored.ts` — automatically adds `.legna/` to `.gitignore`
+
+---
+
+## LegnaCode Office — Pixel Office Visualization
+
+VS Code extension + Admin WebUI panel that visualizes agent activity as a pixel office scene.
+
+### Architecture
+
+```
+CLI Process ──► officeEmitter.ts ──► HTTP POST ──► LegnaOfficeServer
+                                                       │
+                                            ┌──────────┴──────────┐
+                                            ▼                     ▼
+                                      VS Code Webview        Admin WebUI
+                                      (postMessage)          (WebSocket)
+```
+
+### Directory Structure
+
+```
+extensions/legna-office/
+├── server/src/
+│   ├── server.ts              # HTTP + WebSocket server (RFC 6455)
+│   ├── hookEventHandler.ts    # Event routing + session→agent mapping
+│   ├── conversationStore.ts   # Ring buffer (200 messages per session)
+│   ├── provider.ts            # HookProvider interface
+│   ├── i18n.ts                # Server-side i18n
+│   └── providers/hook/legna/
+│       ├── legnaProvider.ts   # LegnaCode native provider
+│       └── legnaHookInstaller.ts  # Auto-write settings
+├── src/                       # VS Code extension backend
+├── webview-ui/src/
+│   ├── office/                # Canvas 2D engine (character FSM, pathfinding, furniture)
+│   ├── components/
+│   │   ├── ConversationSidebar.tsx  # Collapsible conversation flow
+│   │   └── StatusBubble.ts         # Status bubble above characters
+│   ├── hooks/
+│   │   ├── useExtensionMessages.ts  # VS Code postMessage
+│   │   ├── useServerMessages.ts     # WebSocket (for Admin)
+│   │   └── useConversation.ts       # Conversation state management
+│   ├── audio/notificationSounds.ts  # Web Audio notification sounds
+│   ├── demo/demoData.ts             # Standalone demo mode
+│   └── i18n/                        # zh/en bilingual
+```
+
+### Communication Protocol
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/hooks/:providerId` | POST | Bearer token | Hook events |
+| `/api/conversation` | POST | Bearer token | Conversation messages |
+| `/api/state` | GET | None | Current state snapshot |
+| `/api/layout` | GET/POST | POST requires auth | Layout persistence |
+| `/api/join-key` | GET | Bearer token | Get join-key |
+| `/ws` | WebSocket | join-key (remote) | Real-time push |
+
+### Join-Key Authentication
+
+- Server generates 8-char join-key on startup, written to `~/.legna-office/server.json`
+- Local WebSocket connections (127.0.0.1) bypass auth
+- Remote connections require `?key=<joinKey>` in URL
+- HTTP API accepts Bearer token or `?key=` query parameter
+
+### Settings
+
+```json
+{
+  "legnaOffice": {
+    "enabled": true,
+    "autoConnect": true
+  }
+}
+```
+
+### CLI Integration
+
+`src/services/officeEmitter.ts` is called within hook execution functions (fire-and-forget), reads `~/.legna-office/server.json` for server discovery, POSTs events to `/api/hooks/legna` and `/api/conversation`.
+
+### Building
+
+```bash
+# VS Code extension
+cd extensions/legna-office && npm install && npm run build
+
+# Webview UI (dev mode)
+cd extensions/legna-office/webview-ui && npm install && npm run dev
+
+# Package VSIX
+cd extensions/legna-office && npx @vscode/vsce package
+```

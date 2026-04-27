@@ -20,6 +20,8 @@ export interface ServerConfig {
   pid: number;
   /** Auth token required in Authorization header for hook requests */
   token: string;
+  /** Join key for remote CLI instances to connect (shorter, shareable) */
+  joinKey: string;
   /** Timestamp (ms) when the server started */
   startedAt: number;
 }
@@ -104,6 +106,7 @@ export class LegnaOfficeServer {
 
     // Start our own server
     const token = crypto.randomUUID();
+    const joinKey = crypto.randomBytes(4).toString('hex'); // 8-char shareable key
     this.startTime = Date.now();
 
     return new Promise((resolve, reject) => {
@@ -127,6 +130,7 @@ export class LegnaOfficeServer {
             port: addr.port,
             pid: process.pid,
             token,
+            joinKey,
             startedAt: this.startTime,
           };
           this.ownsServer = true;
@@ -186,6 +190,14 @@ export class LegnaOfficeServer {
       return;
     }
 
+    // Join-key endpoint (auth required — only the local extension should see this)
+    if (req.method === 'GET' && url === '/api/join-key') {
+      if (!this.checkAuth(req)) { res.writeHead(401); res.end('unauthorized'); return; }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ joinKey: this.config?.joinKey ?? '' }));
+      return;
+    }
+
     // State endpoint: current agent states + recent messages
     if (req.method === 'GET' && url === '/api/state') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -194,6 +206,21 @@ export class LegnaOfficeServer {
         messages: getAllMessages().slice(-50),
       }));
       return;
+    }
+
+    // Layout persistence endpoints
+    if (url === '/api/layout') {
+      if (req.method === 'GET') {
+        const layout = this.loadLayout();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(layout));
+        return;
+      }
+      if (req.method === 'POST' || req.method === 'PUT') {
+        if (!this.checkAuth(req)) { res.writeHead(401); res.end('unauthorized'); return; }
+        this.handleLayoutSave(req, res);
+        return;
+      }
     }
 
     // Conversation endpoint: POST /api/conversation (auth required)
@@ -218,16 +245,7 @@ export class LegnaOfficeServer {
     res: http.ServerResponse,
     url: string,
   ): void {
-    // Validate auth token (timing-safe comparison prevents side-channel attacks)
-    const authHeader = req.headers['authorization'] ?? '';
-    const expectedToken = `Bearer ${this.config?.token ?? ''}`;
-    const authBuf = Buffer.from(authHeader);
-    const expectedBuf = Buffer.from(expectedToken);
-    if (authBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(authBuf, expectedBuf)) {
-      res.writeHead(401);
-      res.end('unauthorized');
-      return;
-    }
+    if (!this.checkAuth(req)) { res.writeHead(401); res.end('unauthorized'); return; }
 
     // Extract and validate provider ID from URL: /api/hooks/claude -> "claude"
     const providerId = url.slice(HOOK_API_PREFIX.length + 1);
@@ -274,13 +292,7 @@ export class LegnaOfficeServer {
 
   /** Handle POST /api/conversation. Stores message and broadcasts to WebSocket clients. */
   private handleConversationRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    const authHeader = req.headers['authorization'] ?? '';
-    const expectedToken = `Bearer ${this.config?.token ?? ''}`;
-    const authBuf = Buffer.from(authHeader);
-    const expectedBuf = Buffer.from(expectedToken);
-    if (authBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(authBuf, expectedBuf)) {
-      res.writeHead(401); res.end('unauthorized'); return;
-    }
+    if (!this.checkAuth(req)) { res.writeHead(401); res.end('unauthorized'); return; }
 
     let body = '';
     let bodySize = 0;
@@ -313,10 +325,22 @@ export class LegnaOfficeServer {
     });
   }
 
-  /** Handle WebSocket upgrade on /ws (RFC 6455 handshake). */
+  /** Handle WebSocket upgrade on /ws (RFC 6455 handshake).
+   *  Accepts connections with valid join-key (?key=xxx) or local connections without key. */
   private handleWsUpgrade(req: http.IncomingMessage, socket: import('net').Socket, _head: Buffer): void {
     const key = req.headers['sec-websocket-key'];
     if (!key) { socket.destroy(); return; }
+
+    // Join-key auth: remote clients must provide ?key=<joinKey>
+    // Local webview connections (same machine) are allowed without key
+    const reqUrl = new URL(req.url ?? '/ws', `http://${req.headers.host ?? 'localhost'}`);
+    const providedKey = reqUrl.searchParams.get('key');
+    const isLocal = req.socket.remoteAddress === '127.0.0.1' || req.socket.remoteAddress === '::1';
+    if (!isLocal && providedKey !== this.config?.joinKey) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
 
     const accept = crypto.createHash('sha1')
       .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11CE85')
@@ -357,6 +381,27 @@ export class LegnaOfficeServer {
     socket.write(wsFrame(JSON.stringify(snapshot)));
   }
 
+  /** Check Bearer token or join-key query param auth. */
+  private checkAuth(req: http.IncomingMessage): boolean {
+    const expectedToken = this.config?.token ?? '';
+    const expectedJoinKey = this.config?.joinKey ?? '';
+    const authHeader = req.headers.authorization ?? '';
+    const authToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    // Bearer token
+    if (authToken && expectedToken) {
+      const a = Buffer.from(authToken), b = Buffer.from(expectedToken);
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+    }
+    // Join-key from query param
+    const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+    const keyParam = url.searchParams.get('key') ?? '';
+    if (keyParam && expectedJoinKey) {
+      const a = Buffer.from(keyParam), b = Buffer.from(expectedJoinKey);
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+    }
+    return false;
+  }
+
   /** Broadcast a JSON message to all connected WebSocket clients. */
   broadcast(data: Record<string, unknown>): void {
     if (this.wsClients.size === 0) return;
@@ -382,6 +427,49 @@ export class LegnaOfficeServer {
   /** Returns the absolute path to ~/.legna-office/server.json. */
   private getServerJsonPath(): string {
     return path.join(os.homedir(), SERVER_JSON_DIR, SERVER_JSON_NAME);
+  }
+
+  private getLayoutPath(): string {
+    return path.join(os.homedir(), SERVER_JSON_DIR, 'layout.json');
+  }
+
+  /** Load persisted layout from ~/.legna-office/layout.json. Returns null if not found. */
+  loadLayout(): Record<string, unknown> | null {
+    try {
+      const p = this.getLayoutPath();
+      if (!fs.existsSync(p)) return null;
+      return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch { return null; }
+  }
+
+  /** Handle POST /api/layout — save layout to disk. */
+  private handleLayoutSave(req: http.IncomingMessage, res: http.ServerResponse): void {
+    let body = '';
+    let bodySize = 0;
+    let responded = false;
+    req.on('data', (chunk: Buffer) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_HOOK_BODY_SIZE && !responded) {
+        responded = true; res.writeHead(413); res.end('payload too large'); req.destroy(); return;
+      }
+      if (!responded) body += chunk.toString();
+    });
+    req.on('end', () => {
+      if (responded) return;
+      try {
+        const layout = JSON.parse(body);
+        const p = this.getLayoutPath();
+        const dir = path.dirname(p);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+        const tmp = p + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(layout, null, 2), { mode: 0o600 });
+        fs.renameSync(tmp, p);
+        this.broadcast({ type: 'layoutUpdate', layout });
+        res.writeHead(200); res.end('ok');
+      } catch {
+        res.writeHead(400); res.end('invalid json');
+      }
+    });
   }
 
   /** Read and parse server.json. Returns null if missing or malformed. */

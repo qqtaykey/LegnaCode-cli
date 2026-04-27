@@ -135,6 +135,12 @@
 | MiniMax authentication | ❌ | ✅ `/auth-minimax` |
 | Pure TS syntax highlighting | ❌ Requires native modules | ✅ Zero native dependencies |
 | Official registry install | — | ✅ `--registry=https://registry.npmjs.org` |
+| Pixel office visualization | ❌ | ✅ LegnaCode Office — VS Code extension + Admin panel |
+| Office real-time agent status | ❌ | ✅ Canvas 2D characters animate based on tool calls |
+| Office conversation sidebar | ❌ | ✅ Collapsible per-agent conversation flow |
+| Office join-key remote access | ❌ | ✅ 8-char shareable key for remote CLI instances |
+| Office notification sounds | ❌ | ✅ Web Audio oscillator tones for state changes |
+| Office layout persistence | ❌ | ✅ Custom office layout saved to ~/.legna-office/layout.json |
 
 ## Platform Support
 

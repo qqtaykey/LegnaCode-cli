@@ -4,6 +4,26 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.5] - 2026-04-27
+
+### Features
+
+- **LegnaCode Office Phase 2-4** — Pixel office visualization system complete:
+  - **Conversation Sidebar** — Collapsible sidebar showing real-time conversation flow per agent (user/assistant/tool messages with timestamps)
+  - **Status Bubble** — Canvas 2D rendered bubble above characters showing current tool name + i18n state label
+  - **WebSocket Broadcast** — RFC 6455 server pushes snapshot-on-connect + incremental updates to all clients
+  - **Admin Panel** — `office-panel.tsx` embedded in admin WebUI with auto-reconnect (5s timer)
+  - **Join-Key Auth** — 8-char shareable key for remote CLI instances; local connections bypass auth
+  - **Layout Persistence** — `GET/POST /api/layout` saves office layout to `~/.legna-office/layout.json`
+  - **Notification Sounds** — Web Audio API oscillator tones for tool start, turn end, error, permission request
+  - **Demo Mode** — Standalone mock data with cycling agent states when no CLI connected
+  - **i18n** — Full zh/en support: webview hooks, server-side labels, status bubble
+  - **Settings** — `legnaOffice.enabled` / `legnaOffice.autoConnect` in settings schema
+
+### Fixes
+
+- **DeepSeek reasoning_content Passback** — OpenAI bridge non-streaming path completely dropped `message.reasoning_content`, causing 400 errors on subsequent turns ("reasoning_content must be passed back"). Now converts to thinking block in Anthropic format. Also fixed streaming delta to use parsed `thinkingText` for MiniMax `reasoning_details` compatibility.
+
 ## [2.0.4] - 2026-04-27
 
 ### Features
