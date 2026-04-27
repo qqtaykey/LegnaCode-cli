@@ -15,6 +15,18 @@ function copyAssets() {
   }
 }
 
+function copyWebviewDist() {
+  const srcDir = path.join(__dirname, 'webview-ui', 'dist');
+  const dstDir = path.join(__dirname, 'dist', 'webview');
+  if (fs.existsSync(srcDir)) {
+    if (fs.existsSync(dstDir)) fs.rmSync(dstDir, { recursive: true });
+    fs.cpSync(srcDir, dstDir, { recursive: true });
+    console.log('✓ Copied webview-ui/dist/ → dist/webview/');
+  } else {
+    console.warn('⚠ webview-ui/dist/ not found — run webview build first');
+  }
+}
+
 async function main() {
   const ctx = await esbuild.context({
     entryPoints: ['src/extension.ts'],
@@ -34,6 +46,7 @@ async function main() {
     await ctx.rebuild();
     await ctx.dispose();
     copyAssets();
+    copyWebviewDist();
   }
 }
 

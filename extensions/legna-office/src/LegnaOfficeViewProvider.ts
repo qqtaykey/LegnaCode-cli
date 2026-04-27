@@ -967,7 +967,8 @@ function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri): s
 
   let html = fs.readFileSync(indexPath, 'utf-8');
 
-  html = html.replace(/(href|src)="\.\/([^"]+)"/g, (_match, attr, filePath) => {
+  // Rewrite asset paths: handles both "./path" (relative) and "/path" (absolute from Vite)
+  html = html.replace(/(href|src)="(?:\.\/|\/)([^"]+)"/g, (_match, attr, filePath) => {
     const fileUri = vscode.Uri.joinPath(distPath, filePath);
     const webviewUri = webview.asWebviewUri(fileUri);
     return `${attr}="${webviewUri}"`;
