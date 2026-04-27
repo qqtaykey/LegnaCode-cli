@@ -4,6 +4,9 @@
  * Lightweight office visualization embedded in legna admin.
  * Connects to LegnaOfficeServer via WebSocket for real-time updates.
  * Handles snapshot on connect, then incremental agentUpdate/conversation/agentRemoved.
+ *
+ * Connection strategy: exponential backoff (2s → 4s → 8s → ... → 60s max),
+ * stops after 10 consecutive failures. Manual reconnect always available.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -24,7 +27,7 @@ interface ConversationMessage {
   toolName?: string;
 }
 
-type ConnectionState = 'connecting' | 'connected' | 'disconnected';
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'gave-up';
 
 const STATE_EMOJI: Record<string, string> = {
   idle: '\u{1F4A4}', writing: '\u{2328}\u{FE0F}', researching: '\u{1F50D}',
@@ -36,6 +39,10 @@ const STATE_LABEL_ZH: Record<string, string> = {
   executing: '执行中', syncing: '同步中', error: '出错',
 };
 
+const MAX_RETRIES = 10;
+const BASE_DELAY_MS = 2000;
+const MAX_DELAY_MS = 60000;
+
 export function OfficePanel() {
   const [conn, setConn] = useState<ConnectionState>('disconnected');
   const [agents, setAgents] = useState<AgentStatus[]>([]);
@@ -44,26 +51,38 @@ export function OfficePanel() {
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retriesRef = useRef(0);
 
-  const connect = useCallback(() => {
+  const scheduleReconnect = useCallback(() => {
+    if (retriesRef.current >= MAX_RETRIES) {
+      setConn('gave-up');
+      return;
+    }
+    const delay = Math.min(BASE_DELAY_MS * Math.pow(2, retriesRef.current), MAX_DELAY_MS);
+    retriesRef.current++;
+    reconnectTimer.current = setTimeout(() => doConnect(), delay);
+  }, []);
+
+  const doConnect = useCallback(() => {
     if (wsRef.current) return;
     const port = 3457;
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
     setConn('connecting');
 
-    ws.onopen = () => setConn('connected');
+    ws.onopen = () => {
+      setConn('connected');
+      retriesRef.current = 0; // Reset on success
+    };
     ws.onclose = () => {
       setConn('disconnected');
       wsRef.current = null;
-      // Auto-reconnect after 5s
-      reconnectTimer.current = setTimeout(() => connect(), 5000);
+      scheduleReconnect();
     };
     ws.onerror = () => { ws.close(); };
     ws.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
         if (data.type === 'snapshot') {
-          // Initial state on connect
           setAgents((data.agents as AgentStatus[]) ?? []);
           setMessages((data.messages as ConversationMessage[]) ?? []);
         } else if (data.type === 'agentUpdate') {
@@ -80,15 +99,22 @@ export function OfficePanel() {
       } catch {}
     };
     wsRef.current = ws;
-  }, []);
+  }, [scheduleReconnect]);
+
+  const manualConnect = useCallback(() => {
+    retriesRef.current = 0;
+    if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
+    doConnect();
+  }, [doConnect]);
 
   useEffect(() => {
-    connect();
+    doConnect();
     return () => {
       wsRef.current?.close();
+      wsRef.current = null;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
-  }, [connect]);
+  }, [doConnect]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -101,16 +127,18 @@ export function OfficePanel() {
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${
             conn === 'connected' ? 'bg-green-500' :
-            conn === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-600'
+            conn === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+            conn === 'gave-up' ? 'bg-red-500' : 'bg-gray-600'
           }`} />
           <span className="text-sm text-gray-400">
             {conn === 'connected' ? '已连接 LegnaCode Office' :
-             conn === 'connecting' ? '连接中...' : '未连接'}
+             conn === 'connecting' ? '连接中...' :
+             conn === 'gave-up' ? 'Office 服务未运行' : '未连接'}
           </span>
         </div>
         <div className="flex gap-2">
-          {conn === 'disconnected' && (
-            <button onClick={connect}
+          {(conn === 'disconnected' || conn === 'gave-up') && (
+            <button onClick={manualConnect}
               className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">
               重新连接
             </button>
@@ -126,7 +154,9 @@ export function OfficePanel() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {agents.length === 0 ? (
           <div className="col-span-2 text-center py-8 text-gray-500 text-sm">
-            {conn === 'connected' ? '暂无 Agent 活动' : '启动 LegnaCode Office 扩展后可查看 Agent 状态'}
+            {conn === 'connected' ? '暂无 Agent 活动' :
+             conn === 'gave-up' ? '请先启动 LegnaCode Office 扩展或服务端' :
+             '启动 LegnaCode Office 扩展后可查看 Agent 状态'}
           </div>
         ) : agents.map(agent => (
           <div key={agent.id} className="p-3 rounded-lg border border-gray-700 bg-gray-800/60">
