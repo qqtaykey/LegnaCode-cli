@@ -39,19 +39,24 @@ const platformDirs = readdirSync(pkgBase, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-// Packages that must NEVER be published from Mac — win32 built on Windows, main package user-controlled
-const SKIP_PACKAGES = new Set([
-  "@legna-lnc/legnacode-win32-ia32",
-  "@legna-lnc/legnacode-win32-x64",
-  "@legna-lnc/legnacode",
-]);
+// Platform-aware skip: Mac skips win32, Windows skips darwin/linux. Main package never auto-published.
+const currentPlatform = process.platform; // 'darwin' | 'win32' | 'linux'
+function shouldSkip(name: string): boolean {
+  // Main package — always skip, user publishes manually
+  if (name === "@legna-lnc/legnacode") return true;
+  // On Mac/Linux: skip win32 packages (built on Windows)
+  if (currentPlatform !== "win32" && name.includes("win32")) return true;
+  // On Windows: skip darwin/linux packages (built on Mac/Linux)
+  if (currentPlatform === "win32" && (name.includes("darwin") || name.includes("linux"))) return true;
+  return false;
+}
 
 console.log("\n=== Publishing platform packages ===");
 for (const dir of platformDirs) {
   const pkgDir = resolve(pkgBase, dir);
   const name = JSON.parse(readFileSync(resolve(pkgDir, "package.json"), "utf-8")).name;
-  if (SKIP_PACKAGES.has(name)) {
-    console.log(`\nSkipping ${name} (blocked by publish policy)`);
+  if (shouldSkip(name)) {
+    console.log(`\nSkipping ${name} (not for ${currentPlatform})`);
     continue;
   }
   console.log(`\nPublishing ${name}@${version}...`);
@@ -66,6 +71,6 @@ for (const dir of platformDirs) {
 }
 
 // Main package is NOT published — user controls timing
-console.log("\n=== Skipping main package (publish policy) ===");
+console.log("\n=== Skipping main package (user-controlled) ===");
 
 console.log(`\n=== v${version} published${dryRun ? " (dry run)" : ""} ===`);
