@@ -39,10 +39,11 @@ const platformDirs = readdirSync(pkgBase, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-// Packages that must NEVER be published
+// Packages that must NEVER be published from Mac — win32 built on Windows, main package user-controlled
 const SKIP_PACKAGES = new Set([
   "@legna-lnc/legnacode-win32-ia32",
-  "@legna-lnc/legnacode",  // main package — user controls publish timing
+  "@legna-lnc/legnacode-win32-x64",
+  "@legna-lnc/legnacode",
 ]);
 
 console.log("\n=== Publishing platform packages ===");
