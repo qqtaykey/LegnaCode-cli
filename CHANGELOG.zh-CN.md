@@ -2,6 +2,12 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.9] - 2026-04-30
+
+### 修复
+
+- **发布脚本策略** — `scripts/publish.ts` 现在自动跳过 `win32-ia32` 和主包 `@legna-lnc/legnacode`。只发布 7 个平台二进制包。
+
 ## [2.0.8] - 2026-04-30
 
 ### 修复

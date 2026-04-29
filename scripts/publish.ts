@@ -39,10 +39,20 @@ const platformDirs = readdirSync(pkgBase, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
+// Packages that must NEVER be published
+const SKIP_PACKAGES = new Set([
+  "@legna-lnc/legnacode-win32-ia32",
+  "@legna-lnc/legnacode",  // main package — user controls publish timing
+]);
+
 console.log("\n=== Publishing platform packages ===");
 for (const dir of platformDirs) {
   const pkgDir = resolve(pkgBase, dir);
   const name = JSON.parse(readFileSync(resolve(pkgDir, "package.json"), "utf-8")).name;
+  if (SKIP_PACKAGES.has(name)) {
+    console.log(`\nSkipping ${name} (blocked by publish policy)`);
+    continue;
+  }
   console.log(`\nPublishing ${name}@${version}...`);
   const r = Bun.spawnSync(["npm", ...npmArgs], {
     cwd: pkgDir,
@@ -54,15 +64,7 @@ for (const dir of platformDirs) {
   }
 }
 
-// Step 4: Publish main package
-console.log("\n=== Publishing main package ===");
-const main = Bun.spawnSync(["npm", ...npmArgs], {
-  cwd: ROOT,
-  stdio: ["inherit", "inherit", "inherit"],
-});
-if (main.exitCode !== 0) {
-  console.error("Failed to publish main package");
-  process.exit(1);
-}
+// Main package is NOT published — user controls timing
+console.log("\n=== Skipping main package (publish policy) ===");
 
 console.log(`\n=== v${version} published${dryRun ? " (dry run)" : ""} ===`);

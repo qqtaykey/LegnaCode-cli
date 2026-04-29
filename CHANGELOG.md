@@ -4,6 +4,12 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.9] - 2026-04-30
+
+### Fixes
+
+- **Publish script policy** — `scripts/publish.ts` now skips `win32-ia32` and main package `@legna-lnc/legnacode` automatically. Only 7 platform binaries are published.
+
 ## [2.0.8] - 2026-04-30
 
 ### Fixes
