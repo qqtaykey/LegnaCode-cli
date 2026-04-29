@@ -2,6 +2,16 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.0.8] - 2026-04-30
+
+### 修复
+
+- **ShellProgressMessage 崩溃修复** — 防御 `fullOutput` 和 `output` 为 `undefined` 导致的 `TypeError`。
+- **DeepSeek reasoning_content 多轮对话 400 修复** — DeepSeek OpenAI 兼容接口要求多轮对话时将 `reasoning_content` 原样传回，否则报 400。三处修复：
+  1. DeepSeek adapter 移除 `stripReasoningContent()` 调用。
+  2. `convertAnthropicToOpenAI()` 对 string content 的 assistant 消息也保留 `reasoning_content`。
+  3. 空 thinking blocks 正确生成 `reasoning_content: ""`。
+
 ## [2.0.7] - 2026-04-30
 
 ### 修复
