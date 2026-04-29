@@ -2,6 +2,17 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.0] - 2026-04-30
+
+### 新功能
+
+- **平台感知发布** — `scripts/publish.ts` 通过 `process.platform` 自动跳过跨平台包。Mac 发布 darwin + linux；Windows 发布 win32。主包始终手动发布。
+
+### 修复
+
+- **ShellProgressMessage 崩溃** — 防御 `fullOutput` 和 `output` 为 `undefined`。
+- **DeepSeek reasoning_content 多轮 400** — 移除 adapter 中的 `stripReasoningContent()`；string content 消息保留 `reasoning_content`；空 thinking blocks 生成 `reasoning_content: ""`。
+
 ## [2.0.9] - 2026-04-30
 
 ### 修复

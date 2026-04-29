@@ -4,6 +4,17 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.0] - 2026-04-30
+
+### Features
+
+- **Platform-aware publish** — `scripts/publish.ts` now detects `process.platform` to skip cross-platform packages. Mac publishes darwin + linux; Windows publishes win32. Main package always manual.
+
+### Fixes
+
+- **ShellProgressMessage crash** — Guard `fullOutput` and `output` against `undefined`.
+- **DeepSeek reasoning_content Multi-Turn 400** — Removed `stripReasoningContent()` from DeepSeek adapter; preserve `reasoning_content` on string-content messages; empty thinking blocks produce `reasoning_content: ""`.
+
 ## [2.0.9] - 2026-04-30
 
 ### Fixes
