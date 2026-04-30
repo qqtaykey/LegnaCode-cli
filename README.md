@@ -34,6 +34,7 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **2.1.0** | Platform-aware publish (Mac→darwin+linux, Win→win32); DeepSeek reasoning_content multi-turn 400 fix; ShellProgressMessage crash fix |
 | **2.0.5** | LegnaCode Office pixel visualization (conversation sidebar, status bubble, WebSocket, join-key auth, layout persistence, notification sounds, demo mode, i18n); DeepSeek reasoning_content passback fix |
 | **2.0.4** | OpenAI Responses API bridge (Codex providers); admin config hot-reload + UI auto-refresh; getGlobalSettings dead code fix |
 | **2.0.3** | Kiro Gateway optimization; admin profile inline editing; model allowlist removed; count_tokens disabled; sandbox removed |
