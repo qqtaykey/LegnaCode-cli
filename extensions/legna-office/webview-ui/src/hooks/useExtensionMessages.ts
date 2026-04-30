@@ -81,6 +81,7 @@ export function useExtensionMessages(
   getOfficeState: () => OfficeState,
   onLayoutLoaded?: (layout: OfficeLayout) => void,
   isEditDirty?: () => boolean,
+  onConversationMessage?: (msg: { id: string; role: string; content: string; timestamp: number; agentId?: number }) => void,
 ): ExtensionMessageState {
   const [agents, setAgents] = useState<number[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
@@ -252,6 +253,8 @@ export function useExtensionMessages(
         const toolName = (msg.toolName as string | undefined) ?? extractToolName(status);
         os.setAgentTool(id, toolName);
         os.setAgentActive(id, true);
+        // Show tool name bubble (short)
+        os.showToolBubble(id, toolName ?? 'working');
         // Don't clear the permission bubble if the hook already confirmed permission is needed
         if (!permissionActive) {
           os.clearPermissionBubble(id);
@@ -506,11 +509,34 @@ export function useExtensionMessages(
       } else if (msg.type === 'agentTokenUsage') {
         const id = msg.id as number;
         os.setAgentTokens(id, msg.inputTokens as number, msg.outputTokens as number);
+      } else if (msg.type === 'conversationMessage') {
+        onConversationMessage?.({
+          id: `${msg.id}-${msg.timestamp ?? Date.now()}`,
+          role: msg.role as string,
+          content: msg.content as string,
+          timestamp: msg.timestamp as number,
+          agentId: msg.id as number,
+        });
       }
     };
     window.addEventListener('message', handler);
     vscode.postMessage({ type: 'webviewReady' });
-    return () => window.removeEventListener('message', handler);
+
+    // Fallback: if extension backend never sends layoutLoaded (e.g. asset loading
+    // crashes, restoreAgents throws, etc.), force layoutReady after 3s so the
+    // webview doesn't stay stuck on "Loading..." forever.
+    const fallbackTimer = setTimeout(() => {
+      if (!layoutReadyRef.current) {
+        console.warn('[Webview] layoutLoaded not received after 3s — using default layout');
+        layoutReadyRef.current = true;
+        setLayoutReady(true);
+      }
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('message', handler);
+      clearTimeout(fallbackTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getOfficeState]);
 

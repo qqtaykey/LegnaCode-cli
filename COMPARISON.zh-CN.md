@@ -133,6 +133,12 @@
 | MiniMax 认证 | ❌ | ✅ `/auth-minimax` |
 | 纯 TS 语法高亮 | ❌ 依赖原生模块 | ✅ 零原生依赖 |
 | 官方源安装 | — | ✅ `--registry=https://registry.npmjs.org` |
+| 像素办公室可视化 | ❌ | ✅ LegnaCode Office — VS Code 扩展 + Admin 面板 |
+| 办公室实时 Agent 状态 | ❌ | ✅ Canvas 2D 角色根据工具调用实时动画 |
+| 办公室对话侧边栏 | ❌ | ✅ 可折叠的按 agent 对话流 |
+| 办公室 join-key 远程访问 | ❌ | ✅ 8 字符可分享密钥，远程 CLI 实例加入 |
+| 办公室通知音效 | ❌ | ✅ Web Audio 振荡器音调，状态变化时播放 |
+| 办公室布局持久化 | ❌ | ✅ 自定义布局保存到 ~/.legna-office/layout.json |
 
 ## 平台支持
 

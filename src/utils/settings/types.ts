@@ -974,6 +974,19 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'Show thinking summaries in the transcript view (ctrl+o). Default: false.',
         ),
+      legnaOffice: z
+        .object({
+          enabled: z
+            .boolean()
+            .optional()
+            .describe('Enable LegnaCode Office integration. Default: true when server is detected.'),
+          autoConnect: z
+            .boolean()
+            .optional()
+            .describe('Auto-connect to LegnaCode Office server on CLI startup. Default: true.'),
+        })
+        .optional()
+        .describe('LegnaCode Office pixel visualization settings.'),
       skipDangerousModePermissionPrompt: z
         .boolean()
         .optional()

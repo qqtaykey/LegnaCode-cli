@@ -4,6 +4,62 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.0] - 2026-04-30
+
+### Features
+
+- **Platform-aware publish** — `scripts/publish.ts` now detects `process.platform` to skip cross-platform packages. Mac publishes darwin + linux; Windows publishes win32. Main package always manual.
+
+### Fixes
+
+- **ShellProgressMessage crash** — Guard `fullOutput` and `output` against `undefined`.
+- **DeepSeek reasoning_content Multi-Turn 400** — Removed `stripReasoningContent()` from DeepSeek adapter; preserve `reasoning_content` on string-content messages; empty thinking blocks produce `reasoning_content: ""`.
+
+## [2.0.9] - 2026-04-30
+
+### Fixes
+
+- **Publish script policy** — `scripts/publish.ts` now skips `win32-ia32` and main package `@legna-lnc/legnacode` automatically. Only 7 platform binaries are published.
+
+## [2.0.8] - 2026-04-30
+
+### Fixes
+
+- **ShellProgressMessage crash** — Guard `fullOutput` and `output` against `undefined` to prevent `TypeError: undefined is not an object (evaluating 'fullOutput.trim')`.
+- **DeepSeek reasoning_content Multi-Turn 400 Fix** — DeepSeek's OpenAI-compatible endpoint requires `reasoning_content` to be passed back in multi-turn conversations. Three fixes:
+  1. Removed `stripReasoningContent()` from DeepSeek adapter — the field must survive for the OpenAI bridge to reconstruct it; Anthropic SDK ignores unknown fields so both paths are safe.
+  2. `convertAnthropicToOpenAI()` now preserves `reasoning_content` on string-content assistant messages (session resume, prefill scenarios).
+  3. Empty thinking blocks now correctly produce `reasoning_content: ""` instead of being silently dropped.
+
+## [2.0.7] - 2026-04-30
+
+### Fixes
+
+- **DeepSeek reasoning_content Multi-Turn 400 Fix** — DeepSeek's OpenAI-compatible endpoint requires `reasoning_content` to be passed back in multi-turn conversations. Three fixes:
+  1. Removed `stripReasoningContent()` from DeepSeek adapter — the field must survive for the OpenAI bridge to reconstruct it; Anthropic SDK ignores unknown fields so both paths are safe.
+  2. `convertAnthropicToOpenAI()` now preserves `reasoning_content` on string-content assistant messages (session resume, prefill scenarios).
+  3. Empty thinking blocks now correctly produce `reasoning_content: ""` instead of being silently dropped.
+
+## [2.0.5] - 2026-04-27
+
+### Features
+
+- **LegnaCode Office Phase 2-4** — Pixel office visualization system complete:
+  - **Conversation Sidebar** — Collapsible sidebar showing real-time conversation flow per agent (user/assistant/tool messages with timestamps)
+  - **Status Bubble** — Canvas 2D rendered bubble above characters showing current tool name + i18n state label
+  - **WebSocket Broadcast** — RFC 6455 server pushes snapshot-on-connect + incremental updates to all clients
+  - **Admin Panel** — `office-panel.tsx` embedded in admin WebUI with auto-reconnect (5s timer)
+  - **Join-Key Auth** — 8-char shareable key for remote CLI instances; local connections bypass auth
+  - **Layout Persistence** — `GET/POST /api/layout` saves office layout to `~/.legna-office/layout.json`
+  - **Notification Sounds** — Web Audio API oscillator tones for tool start, turn end, error, permission request
+  - **Demo Mode** — Standalone mock data with cycling agent states when no CLI connected
+  - **i18n** — Full zh/en support: webview hooks, server-side labels, status bubble
+  - **Settings** — `legnaOffice.enabled` / `legnaOffice.autoConnect` in settings schema
+
+### Fixes
+
+- **DeepSeek reasoning_content Passback** — OpenAI bridge non-streaming path completely dropped `message.reasoning_content`, causing 400 errors on subsequent turns ("reasoning_content must be passed back"). Now converts to thinking block in Anthropic format. Also fixed streaming delta to use parsed `thinkingText` for MiniMax `reasoning_details` compatibility.
+
 ## [2.0.4] - 2026-04-27
 
 ### Features

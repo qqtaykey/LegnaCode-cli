@@ -3,7 +3,10 @@
  *
  * Lightweight office visualization embedded in legna admin.
  * Connects to LegnaOfficeServer via WebSocket for real-time updates.
- * Falls back to a status display when server is not running.
+ * Handles snapshot on connect, then incremental agentUpdate/conversation/agentRemoved.
+ *
+ * Connection strategy: exponential backoff (2s → 4s → 8s → ... → 60s max),
+ * stops after 10 consecutive failures. Manual reconnect always available.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -24,17 +27,21 @@ interface ConversationMessage {
   toolName?: string;
 }
 
-type ConnectionState = 'connecting' | 'connected' | 'disconnected';
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'gave-up';
 
 const STATE_EMOJI: Record<string, string> = {
-  idle: '💤', writing: '⌨️', researching: '🔍',
-  executing: '⚡', syncing: '🔄', error: '❌',
+  idle: '\u{1F4A4}', writing: '\u{2328}\u{FE0F}', researching: '\u{1F50D}',
+  executing: '\u{26A1}', syncing: '\u{1F504}', error: '\u{274C}',
 };
 
 const STATE_LABEL_ZH: Record<string, string> = {
   idle: '待命', writing: '编码中', researching: '搜索中',
   executing: '执行中', syncing: '同步中', error: '出错',
 };
+
+const MAX_RETRIES = 10;
+const BASE_DELAY_MS = 2000;
+const MAX_DELAY_MS = 60000;
 
 export function OfficePanel() {
   const [conn, setConn] = useState<ConnectionState>('disconnected');
@@ -43,20 +50,59 @@ export function OfficePanel() {
   const [showChat, setShowChat] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retriesRef = useRef(0);
 
-  const connect = useCallback(() => {
-    // Try connecting to LegnaOfficeServer WebSocket
-    const port = 3457; // Default office server port
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+  const scheduleReconnect = useCallback(() => {
+    if (retriesRef.current >= MAX_RETRIES) {
+      setConn('gave-up');
+      return;
+    }
+    const delay = Math.min(BASE_DELAY_MS * Math.pow(2, retriesRef.current), MAX_DELAY_MS);
+    retriesRef.current++;
+    reconnectTimer.current = setTimeout(() => doConnect(), delay);
+  }, []);
+
+  const doConnect = useCallback(async () => {
+    if (wsRef.current) return;
     setConn('connecting');
 
-    ws.onopen = () => setConn('connected');
-    ws.onclose = () => { setConn('disconnected'); wsRef.current = null; };
-    ws.onerror = () => { setConn('disconnected'); ws.close(); };
+    // Discover Office server port via Admin API
+    let port: number;
+    try {
+      const res = await fetch('/api/office-port');
+      const info = await res.json();
+      if (!info.running || !info.port) {
+        setConn('disconnected');
+        scheduleReconnect();
+        return;
+      }
+      port = info.port;
+    } catch {
+      setConn('disconnected');
+      scheduleReconnect();
+      return;
+    }
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+
+    ws.onopen = () => {
+      setConn('connected');
+      retriesRef.current = 0;
+    };
+    ws.onclose = () => {
+      setConn('disconnected');
+      wsRef.current = null;
+      scheduleReconnect();
+    };
+    ws.onerror = () => { ws.close(); };
     ws.onmessage = (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (data.type === 'agentUpdate') {
+        if (data.type === 'snapshot') {
+          setAgents((data.agents as AgentStatus[]) ?? []);
+          setMessages((data.messages as ConversationMessage[]) ?? []);
+        } else if (data.type === 'agentUpdate') {
           setAgents(prev => {
             const idx = prev.findIndex(a => a.id === data.agent.id);
             if (idx >= 0) { const next = [...prev]; next[idx] = data.agent; return next; }
@@ -70,12 +116,22 @@ export function OfficePanel() {
       } catch {}
     };
     wsRef.current = ws;
-  }, []);
+  }, [scheduleReconnect]);
+
+  const manualConnect = useCallback(() => {
+    retriesRef.current = 0;
+    if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
+    doConnect();
+  }, [doConnect]);
 
   useEffect(() => {
-    connect();
-    return () => { wsRef.current?.close(); };
-  }, [connect]);
+    doConnect();
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+    };
+  }, [doConnect]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,16 +144,18 @@ export function OfficePanel() {
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${
             conn === 'connected' ? 'bg-green-500' :
-            conn === 'connecting' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-600'
+            conn === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+            conn === 'gave-up' ? 'bg-red-500' : 'bg-gray-600'
           }`} />
           <span className="text-sm text-gray-400">
             {conn === 'connected' ? '已连接 LegnaCode Office' :
-             conn === 'connecting' ? '连接中...' : '未连接'}
+             conn === 'connecting' ? '连接中...' :
+             conn === 'gave-up' ? 'Office 服务未运行' : '未连接'}
           </span>
         </div>
         <div className="flex gap-2">
-          {conn === 'disconnected' && (
-            <button onClick={connect}
+          {(conn === 'disconnected' || conn === 'gave-up') && (
+            <button onClick={manualConnect}
               className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">
               重新连接
             </button>
@@ -113,7 +171,9 @@ export function OfficePanel() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {agents.length === 0 ? (
           <div className="col-span-2 text-center py-8 text-gray-500 text-sm">
-            {conn === 'connected' ? '暂无 Agent 活动' : '启动 LegnaCode Office 扩展后可查看 Agent 状态'}
+            {conn === 'connected' ? '暂无 Agent 活动' :
+             conn === 'gave-up' ? '请先启动 LegnaCode Office 扩展或服务端' :
+             '启动 LegnaCode Office 扩展后可查看 Agent 状态'}
           </div>
         ) : agents.map(agent => (
           <div key={agent.id} className="p-3 rounded-lg border border-gray-700 bg-gray-800/60">

@@ -2,6 +2,62 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.0] - 2026-04-30
+
+### 新功能
+
+- **平台感知发布** — `scripts/publish.ts` 通过 `process.platform` 自动跳过跨平台包。Mac 发布 darwin + linux；Windows 发布 win32。主包始终手动发布。
+
+### 修复
+
+- **ShellProgressMessage 崩溃** — 防御 `fullOutput` 和 `output` 为 `undefined`。
+- **DeepSeek reasoning_content 多轮 400** — 移除 adapter 中的 `stripReasoningContent()`；string content 消息保留 `reasoning_content`；空 thinking blocks 生成 `reasoning_content: ""`。
+
+## [2.0.9] - 2026-04-30
+
+### 修复
+
+- **发布脚本策略** — `scripts/publish.ts` 现在自动跳过 `win32-ia32` 和主包 `@legna-lnc/legnacode`。只发布 7 个平台二进制包。
+
+## [2.0.8] - 2026-04-30
+
+### 修复
+
+- **ShellProgressMessage 崩溃修复** — 防御 `fullOutput` 和 `output` 为 `undefined` 导致的 `TypeError`。
+- **DeepSeek reasoning_content 多轮对话 400 修复** — DeepSeek OpenAI 兼容接口要求多轮对话时将 `reasoning_content` 原样传回，否则报 400。三处修复：
+  1. DeepSeek adapter 移除 `stripReasoningContent()` 调用。
+  2. `convertAnthropicToOpenAI()` 对 string content 的 assistant 消息也保留 `reasoning_content`。
+  3. 空 thinking blocks 正确生成 `reasoning_content: ""`。
+
+## [2.0.7] - 2026-04-30
+
+### 修复
+
+- **DeepSeek reasoning_content 多轮对话 400 修复** — DeepSeek OpenAI 兼容接口要求多轮对话时将 `reasoning_content` 原样传回，否则报 400。三处修复：
+  1. DeepSeek adapter 移除 `stripReasoningContent()` 调用 — OpenAI 桥接需要该字段来重建 `reasoning_content`；Anthropic SDK 忽略未知字段，两条路径均安全。
+  2. `convertAnthropicToOpenAI()` 现在对 string content 的 assistant 消息也保留 `reasoning_content`（会话恢复、prefill 场景）。
+  3. 空 thinking blocks 现在正确生成 `reasoning_content: ""` 而非被静默丢弃。
+
+## [2.0.5] - 2026-04-27
+
+### 新功能
+
+- **LegnaCode Office Phase 2-4** — 像素办公室可视化系统完成：
+  - **对话侧边栏** — 可折叠侧边栏，按 agent 实时显示对话流（用户/助手/工具消息 + 时间戳）
+  - **状态气泡** — Canvas 2D 渲染角色头顶气泡，显示当前工具名 + i18n 状态标签
+  - **WebSocket 广播** — RFC 6455 服务端推送，连接时发送快照 + 增量更新
+  - **Admin 面板** — `office-panel.tsx` 嵌入 admin WebUI，自动重连（5 秒定时器）
+  - **Join-Key 认证** — 8 字符可分享密钥，远程 CLI 实例通过密钥加入；本地连接免认证
+  - **布局持久化** — `GET/POST /api/layout` 保存办公室布局到 `~/.legna-office/layout.json`
+  - **通知音效** — Web Audio API 振荡器音调：工具启动、回合结束、错误、权限请求
+  - **演示模式** — 无 CLI 连接时的独立 mock 数据，agent 状态自动循环
+  - **i18n** — 完整中英支持：webview hooks、服务端标签、状态气泡
+  - **Settings** — settings schema 新增 `legnaOffice.enabled` / `legnaOffice.autoConnect`
+
+### 修复
+
+- **DeepSeek reasoning_content 回传修复** — OpenAI 桥接非流式路径完全丢弃了 `message.reasoning_content`，导致后续轮次 400 错误（"reasoning_content must be passed back"）。现在转换为 Anthropic 格式的 thinking block。同时修复流式 delta 使用已解析的 `thinkingText`，兼容 MiniMax 的 `reasoning_details` 格式。
+
 ## [2.0.4] - 2026-04-27
 
 ### 新功能
