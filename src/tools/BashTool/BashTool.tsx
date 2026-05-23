@@ -26,6 +26,7 @@ import { fileHistoryEnabled, fileHistoryTrackEdit } from '../../utils/fileHistor
 import { truncate } from '../../utils/format.js';
 import { getFsImplementation } from '../../utils/fsOperations.js';
 import { lazySchema } from '../../utils/lazySchema.js';
+import { minimizeOutput } from '../../utils/outputMinimizer.js';
 import { expandPath } from '../../utils/path.js';
 import type { PermissionResult } from '../../utils/permissions/PermissionResult.js';
 import { maybeRecordPluginHint } from '../../utils/plugins/hintRecommendation.js';
@@ -789,6 +790,13 @@ export const BashTool = buildTool({
     // resizeShellImageOutput). Scope the decoded buffer so it can be reclaimed
     // before we build the output Out object.
     let compressedStdout = strippedStdout;
+    // Output minimizer: compress verbose CLI output when feature is enabled
+    if (feature('OUTPUT_MINIMIZER') && !isImage && result.code === 0) {
+      const minimized = minimizeOutput(input.command, strippedStdout, '')
+      if (minimized) {
+        compressedStdout = `${minimized.minimized}\n[${minimized.originalLines} lines → ${minimized.minimizedLines} lines]`
+      }
+    }
     if (isImage) {
       const resized = await resizeShellImageOutput(strippedStdout, result.outputFilePath, persistedOutputSize);
       if (resized) {

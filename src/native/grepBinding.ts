@@ -1,18 +1,12 @@
 /**
- * Native Grep TypeScript binding — wraps Rust grep addon.
+ * Grep Binding — pure TypeScript grep with LRU cache.
  *
- * Uses grep-regex/grep-searcher/ignore crates (ripgrep's core libraries)
- * for in-process parallel file search. No fallback — if the native addon
- * is not compiled, this module throws at call time.
+ * Replaces the Rust grep N-API addon. Uses the existing ripgrep subprocess
+ * with an LRU cache layer to avoid redundant searches.
  */
 
-import {
-  grepAddon,
-  hasNativeGrep,
-  type NativeGrepOptions,
-  type NativeGrepMatch,
-  type NativeGrepResult,
-} from './index.js'
+import { getCachedGrep, setCachedGrep } from '../utils/grepCache.js'
+import { ripGrep } from '../utils/ripgrep.js'
 
 export interface GrepSearchOptions {
   pattern: string
@@ -40,48 +34,78 @@ export interface GrepSearchResult {
 }
 
 /**
- * Native grep search — uses Rust ripgrep libraries in-process.
- * Throws if native addon is not available.
+ * Grep search — uses ripgrep subprocess with LRU caching.
+ * Always available, no native addon needed.
  */
-export function nativeGrepSearch(options: GrepSearchOptions): GrepSearchResult {
-  if (!hasNativeGrep || !grepAddon) {
-    throw new Error(
-      'Native grep addon not available. Run `cd native && cargo build --release` to compile, ' +
-      'or disable NATIVE_GREP feature flag in bunfig.toml.'
-    )
+export async function nativeGrepSearch(options: GrepSearchOptions): Promise<GrepSearchResult> {
+  const args: string[] = []
+
+  if (!options.isRegex) args.push('--fixed-strings')
+  if (options.caseInsensitive) args.push('-i')
+  if (options.contextBefore) args.push('-B', String(options.contextBefore))
+  if (options.contextAfter) args.push('-A', String(options.contextAfter))
+  if (options.globFilter) args.push('--glob', options.globFilter)
+  if (options.fileType) args.push('--type', options.fileType)
+  if (options.respectGitignore === false) args.push('--no-ignore')
+
+  const maxResults = options.maxResults ?? 250
+  args.push('--max-count', String(maxResults))
+  args.push('--json')
+
+  // Check cache
+  const cacheKey = [...args, options.pattern]
+  const cached = getCachedGrep(options.pattern, options.rootDir, cacheKey)
+  if (cached) {
+    return JSON.parse(cached)
   }
 
-  const nativeOpts: NativeGrepOptions = {
-    pattern: options.pattern,
-    root_dir: options.rootDir,
-    is_regex: options.isRegex ?? true,
-    case_insensitive: options.caseInsensitive ?? false,
-    max_results: options.maxResults ?? 250,
-    context_before: options.contextBefore ?? 0,
-    context_after: options.contextAfter ?? 0,
-    glob_filter: options.globFilter,
-    file_type: options.fileType,
-    respect_gitignore: options.respectGitignore ?? true,
-  }
+  // Execute ripgrep with --json for structured output
+  try {
+    const output = await ripGrep(options.pattern, options.rootDir, args)
+    const result = parseJsonOutput(output, maxResults)
 
-  const result: NativeGrepResult = grepAddon.grepSearch(nativeOpts)
+    // Cache the result
+    setCachedGrep(options.pattern, options.rootDir, cacheKey, JSON.stringify(result))
+    return result
+  } catch {
+    // ripgrep returns exit code 1 for no matches
+    return { matches: [], filesSearched: 0, truncated: false }
+  }
+}
+
+function parseJsonOutput(output: string, maxResults: number): GrepSearchResult {
+  const lines = output.split('\n').filter(Boolean)
+  const matches: GrepSearchResult['matches'] = []
+  let filesSearched = 0
+
+  for (const line of lines) {
+    try {
+      const msg = JSON.parse(line)
+      if (msg.type === 'match') {
+        const data = msg.data
+        matches.push({
+          path: data.path?.text ?? '',
+          lineNumber: data.line_number ?? 0,
+          lineContent: data.lines?.text?.trimEnd() ?? '',
+        })
+      } else if (msg.type === 'summary') {
+        filesSearched = msg.data?.stats?.searches ?? 0
+      }
+    } catch {
+      // Skip malformed JSON lines
+    }
+  }
 
   return {
-    matches: result.matches.map((m: NativeGrepMatch) => ({
-      path: m.path,
-      lineNumber: m.line_number,
-      lineContent: m.line_content,
-      contextBefore: m.context_before,
-      contextAfter: m.context_after,
-    })),
-    filesSearched: result.files_searched,
-    truncated: result.truncated,
+    matches,
+    filesSearched,
+    truncated: matches.length >= maxResults,
   }
 }
 
 /**
- * Check if native grep is available.
+ * Check if grep is available — always true for TS impl.
  */
 export function isNativeGrepAvailable(): boolean {
-  return hasNativeGrep
+  return true
 }

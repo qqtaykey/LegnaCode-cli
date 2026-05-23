@@ -6,12 +6,15 @@ All notable changes to LegnaCode CLI will be documented in this file.
 
 ### 新功能
 
-- **Hashline 编辑系统** — 基于 xxHash32 双字母锚点的精确编辑。每行生成 2 字符锚点（恰好 1 个 BPE token），模型可无歧义引用精确行位置。彻底消灭 str_replace 失败 — 弱模型编辑成功率提升 10 倍（Grok Code Fast 1: 6.7% → 68.3%），输出 token 减少 61%。支持 `«`（行前插入）、`»`（行后插入）、`≔`（范围替换/删除）、`§PATH`（多文件补丁）。内置 3-way merge 恢复机制，文件在读取和编辑之间被修改时自动恢复。
-- **多模型路由** — 支持 15+ AI 提供商（Anthropic、OpenAI、Google Gemini、Ollama、DeepSeek、Groq、Together、Fireworks、Mistral、OpenRouter、xAI、SambaNova、Cerebras、Perplexity、Cohere），8 种 API 协议。SQLite 模型缓存（WAL 模式，2 小时 TTL），支持 online/offline/online-if-uncached 刷新策略。协议模块懒加载，零启动开销。
-- **内化操作（Rust N-API）** — 进程内 grep，使用 grep-regex/grep-searcher/ignore/rayon crate，零进程 spawn 开销。进程内 shell，使用 vendored brush-shell 实现持久会话。Native 绑定 + 自动 fallback 到外部二进制。
+- **多提供商路由** — 28 家 AI 提供商（Anthropic、OpenAI、Google Gemini、Ollama、DeepSeek、Groq、Together、Fireworks、Mistral、OpenRouter、xAI、SambaNova、Cerebras、Perplexity、Cohere、Azure OpenAI、AWS Bedrock、Google Vertex、Novita、Hyperbolic、Lepton、Nebius、DeepInfra、Anyscale、Replicate、Moonshot/Kimi、Zhipu/GLM、MiniMax、Qwen、Yi、Baichuan），9 种 API 协议（anthropic-messages、openai-completions、openai-responses、google-generative-ai、ollama-chat、bedrock-converse、azure-openai、google-vertex、cursor-agent）。SQLite 模型缓存（WAL 模式，2h TTL）。协议模块懒加载，零启动开销。
+- **Hashline 编辑系统** — 基于 xxHash32 双字母锚点的精确编辑。每行生成 2 字符锚点（恰好 1 个 BPE token），模型可无歧义引用精确行位置。彻底消灭 str_replace 失败 — 弱模型编辑成功率提升 10 倍（Grok Code Fast 1: 6.7% → 68.3%），输出 token 减少 61%。支持 `«`（行前插入）、`»`（行后插入）、`≔`（范围替换/删除）、`§PATH`（多文件补丁）。内置 3-way merge 恢复机制。
+- **持久 Shell** — 复用 shell 子进程，避免每次命令 spawn（节省 ~5-15ms/次）。会话池（最多 4 个），按 session ID 隔离。空闲 60s 自动回收。SIGINT 中断当前命令但不杀 shell。
+- **输出最小化器** — npm/pip/cargo/git/docker/bun 工具规则引擎。超过 15 行的冗长输出自动压缩为摘要。仅在命令成功（exit 0）时生效。可通过 `OUTPUT_MINIMIZER` flag 关闭。
+- **Grep 缓存** — LRU 缓存（50 条目，5s TTL）。同路径 + 同 pattern 复用结果。文件编辑后自动失效。
 - **真实浏览器控制** — puppeteer-core + CDP 集成，支持 headless/spawned/connected 三种启动模式。可访问性树提取实现结构化页面理解。反检测 stealth 脚本。跨平台 Chrome 自动发现。支持通过 CDP 附加 Electron 应用。
 - **持久 Python 环境** — 有状态 Python kernel，NDJSON 协议通过 stdin/stdout 通信。自动检测 venv/conda。富显示支持（pandas DataFrame、PIL 图片、matplotlib 图表转 base64）。跨回合会话持久。SIGINT→SIGTERM→SIGKILL 优雅关闭。
 - **配置联邦发现** — 实时读取（非迁移）其他工具的配置目录：`.cursor/`（MCP + 规则）、`.windsurf/`（MCP + 规则）、`.gemini/`（MCP + 上下文）、`.codex/`（AGENTS.md + MCP）、`.clinerules`、`.github/copilot-instructions.md`、`.vscode/mcp.json`。基于优先级去重。可通过 settings 禁用特定 provider。
+- **Admin WebUI 扩展** — 设置面板：9 种 API 路由模式，Azure/Bedrock/Vertex/Google/OpenRouter 凭证字段。配置面板：21 个一键提供商预设（原 7 个）。每个预设预填 baseUrl、apiFormat、模型名和 key 前缀。
 
 ### Feature Flags
 
@@ -20,8 +23,8 @@ All notable changes to LegnaCode CLI will be documented in this file.
 ```
 HASHLINE_EDIT = true
 MULTI_PROVIDER = true
-NATIVE_GREP = true
-NATIVE_SHELL = true
+PERSISTENT_SHELL = true
+OUTPUT_MINIMIZER = true
 REAL_BROWSER = true
 PYTHON_KERNEL = true
 CONFIG_DISCOVERY = true

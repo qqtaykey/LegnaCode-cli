@@ -99,7 +99,7 @@ export const hasNativeSandbox = sandboxAddon !== null
 export const hasNativeFileSearch = fileSearchAddon !== null
 export const hasNativeApplyPatch = applyPatchAddon !== null
 
-// ── Native Grep addon ──────────────────────────────────────────
+// ── Native Grep (pure TS — uses ripgrep subprocess + LRU cache) ──────────
 
 export interface NativeGrepOptions {
   pattern: string
@@ -128,14 +128,11 @@ export interface NativeGrepResult {
   truncated: boolean
 }
 
-interface GrepAddon {
-  grepSearch(options: NativeGrepOptions): NativeGrepResult
-}
+// Pure TS implementation — no native addon needed
+export const grepAddon = null
+export const hasNativeGrep = true // Always available via TS ripgrep wrapper
 
-export const grepAddon = tryLoadAddon<GrepAddon>('grep')
-export const hasNativeGrep = grepAddon !== null
-
-// ── Native Shell addon ──────────────────────────────────────────
+// ── Native Shell (pure TS — persistent child process) ──────────
 
 export interface NativeShellOptions {
   command: string
@@ -152,15 +149,9 @@ export interface NativeShellResult {
   timed_out: boolean
 }
 
-interface ShellAddon {
-  createSession(cwd: string, env?: Record<string, string> | null): number
-  executeInSession(sessionId: number, command: string, timeoutMs?: number): NativeShellResult
-  destroySession(sessionId: number): void
-  executeOneshot(options: NativeShellOptions): NativeShellResult
-}
-
-export const shellAddon = tryLoadAddon<ShellAddon>('shell')
-export const hasNativeShell = shellAddon !== null
+// Pure TS implementation — no native addon needed
+export const shellAddon = null
+export const hasNativeShell = true // Always available via TS persistent shell
 
 // ── Availability checks ────────────────────────────────────────
 

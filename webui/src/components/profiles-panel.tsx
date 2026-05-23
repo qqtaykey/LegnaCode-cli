@@ -108,6 +108,188 @@ const PRESETS: Preset[] = [
       model: 'sonnet',
     },
   },
+  {
+    id: 'openai', name: 'OpenAI', color: '#10B981',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'sk-',
+        ANTHROPIC_BASE_URL: 'https://api.openai.com',
+        ANTHROPIC_MODEL: 'gpt-4.1',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gpt-4.1-mini',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'gpt-4.1',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'o3',
+      },
+      apiFormat: 'openai',
+      model: 'gpt-4.1',
+    },
+  },
+  {
+    id: 'openrouter', name: 'OpenRouter', color: '#6D28D9',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'sk-or-',
+        ANTHROPIC_BASE_URL: 'https://openrouter.ai/api',
+        ANTHROPIC_MODEL: 'anthropic/claude-sonnet-4-20250514',
+      },
+      apiFormat: 'openai',
+      model: 'anthropic/claude-sonnet-4-20250514',
+    },
+  },
+  {
+    id: 'groq', name: 'Groq', color: '#F59E0B',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'gsk_',
+        ANTHROPIC_BASE_URL: 'https://api.groq.com/openai',
+        ANTHROPIC_MODEL: 'llama-4-scout-17b-16e-instruct',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'llama-4-scout-17b-16e-instruct',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'llama-4-maverick-17b-128e-instruct',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'llama-4-maverick-17b-128e-instruct',
+      },
+      apiFormat: 'openai',
+      model: 'llama-4-scout-17b-16e-instruct',
+    },
+  },
+  {
+    id: 'xai', name: 'xAI (Grok)', color: '#1D4ED8',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: 'xai-',
+        ANTHROPIC_BASE_URL: 'https://api.x.ai',
+        ANTHROPIC_MODEL: 'grok-3',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'grok-3-mini',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'grok-3',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'grok-3',
+      },
+      apiFormat: 'openai',
+      model: 'grok-3',
+    },
+  },
+  {
+    id: 'azure', name: 'Azure OpenAI', color: '#0078D4',
+    content: {
+      env: {
+        AZURE_OPENAI_API_KEY: '',
+        AZURE_OPENAI_ENDPOINT: 'https://YOUR_RESOURCE.openai.azure.com',
+        ANTHROPIC_MODEL: 'gpt-4o',
+      },
+      apiFormat: 'azure-openai',
+      model: 'gpt-4o',
+    },
+  },
+  {
+    id: 'gemini', name: 'Google Gemini', color: '#4285F4',
+    content: {
+      env: {
+        GOOGLE_API_KEY: '',
+        ANTHROPIC_BASE_URL: 'https://generativelanguage.googleapis.com',
+        ANTHROPIC_MODEL: 'gemini-2.5-pro',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'gemini-2.5-flash',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'gemini-2.5-pro',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'gemini-2.5-pro',
+      },
+      apiFormat: 'google-generative-ai',
+      model: 'gemini-2.5-pro',
+    },
+  },
+  {
+    id: 'ollama', name: 'Ollama (本地)', color: '#374151',
+    content: {
+      env: {
+        ANTHROPIC_BASE_URL: 'http://localhost:11434',
+        ANTHROPIC_MODEL: 'qwen3:32b',
+      },
+      apiFormat: 'ollama-chat',
+      model: 'qwen3:32b',
+    },
+  },
+  {
+    id: 'together', name: 'Together AI', color: '#059669',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.together.xyz',
+        ANTHROPIC_MODEL: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+      },
+      apiFormat: 'openai',
+      model: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
+    },
+  },
+  {
+    id: 'fireworks', name: 'Fireworks AI', color: '#DC2626',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.fireworks.ai/inference',
+        ANTHROPIC_MODEL: 'accounts/fireworks/models/llama4-maverick-instruct-basic',
+      },
+      apiFormat: 'openai',
+      model: 'accounts/fireworks/models/llama4-maverick-instruct-basic',
+    },
+  },
+  {
+    id: 'mistral', name: 'Mistral AI', color: '#FF7000',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.mistral.ai',
+        ANTHROPIC_MODEL: 'mistral-large-latest',
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: 'mistral-small-latest',
+        ANTHROPIC_DEFAULT_SONNET_MODEL: 'mistral-large-latest',
+        ANTHROPIC_DEFAULT_OPUS_MODEL: 'mistral-large-latest',
+      },
+      apiFormat: 'openai',
+      model: 'mistral-large-latest',
+    },
+  },
+  {
+    id: 'sambanova', name: 'SambaNova', color: '#7C3AED',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.sambanova.ai',
+        ANTHROPIC_MODEL: 'Meta-Llama-4-Maverick-17B-128E-Instruct',
+      },
+      apiFormat: 'openai',
+      model: 'Meta-Llama-4-Maverick-17B-128E-Instruct',
+    },
+  },
+  {
+    id: 'cerebras', name: 'Cerebras', color: '#2563EB',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.cerebras.ai',
+        ANTHROPIC_MODEL: 'llama-4-scout-17b-16e-instruct',
+      },
+      apiFormat: 'openai',
+      model: 'llama-4-scout-17b-16e-instruct',
+    },
+  },
+  {
+    id: 'yi', name: 'Yi (零一万物)', color: '#14B8A6',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.lingyiwanwu.com',
+        ANTHROPIC_MODEL: 'yi-lightning',
+      },
+      apiFormat: 'openai',
+      model: 'yi-lightning',
+    },
+  },
+  {
+    id: 'baichuan', name: 'Baichuan (百川)', color: '#0EA5E9',
+    content: {
+      env: {
+        ANTHROPIC_AUTH_TOKEN: '',
+        ANTHROPIC_BASE_URL: 'https://api.baichuan-ai.com',
+        ANTHROPIC_MODEL: 'Baichuan4',
+      },
+      apiFormat: 'openai',
+      model: 'Baichuan4',
+    },
+  },
 ]
 
 export function ProfilesPanel({ scope }: Props) {

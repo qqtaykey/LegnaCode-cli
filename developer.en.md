@@ -269,8 +269,8 @@ if (feature('VOICE_MODE')) {
 | `TEMPLATES` | Template system (new/list/reply) |
 | `HASHLINE_EDIT` | Hashline edit system (hash-anchored precision editing) |
 | `MULTI_PROVIDER` | Multi-model routing (15+ providers, 8 protocols) |
-| `NATIVE_GREP` | In-process grep via Rust N-API |
-| `NATIVE_SHELL` | In-process shell via Rust N-API (brush-shell) |
+| `PERSISTENT_SHELL` | Persistent shell sessions (reuse child process, avoid repeated spawn) |
+| `OUTPUT_MINIMIZER` | Output minimizer (compress verbose git/npm/cargo output) |
 | `REAL_BROWSER` | Real browser control (puppeteer-core + CDP) |
 | `PYTHON_KERNEL` | Persistent Python environment (stateful kernel) |
 | `CONFIG_DISCOVERY` | Config federation discovery (Cursor/Windsurf/Gemini/Codex/Cline/Copilot) |
@@ -1124,12 +1124,33 @@ User request → ModelManager.resolveProviderModels(strategy)
                     ▼
               Protocol Registry → lazy-load protocol module
                     │
-                    ├─ anthropic-messages (existing)
-                    ├─ openai-completions (OpenAI, DeepSeek, Groq, etc.)
+                    ├─ anthropic-messages (native)
+                    ├─ openai-completions (OpenAI, DeepSeek, Groq, xAI, etc.)
+                    ├─ openai-responses (OpenAI Responses API)
                     ├─ google-generative-ai (Gemini)
+                    ├─ google-vertex (Vertex AI, OAuth)
+                    ├─ azure-openai (Azure, api-key + api-version)
+                    ├─ bedrock-converse (AWS Bedrock, SigV4 + event-stream)
                     ├─ ollama-chat (local models)
-                    └─ ... (8 protocols total)
+                    └─ cursor-agent (reserved)
 ```
+
+### Protocol Implementations
+
+| File | Protocol | Description |
+|------|----------|-------------|
+| `protocols/openai.ts` | `openai-completions` | SSE streaming, compatible with 20+ providers |
+| `protocols/openai-responses.ts` | `openai-responses` | OpenAI new Responses API, event-based |
+| `protocols/google.ts` | `google-generative-ai` | Gemini SSE, API key auth |
+| `protocols/vertex.ts` | `google-vertex` | Vertex AI, OAuth Bearer token |
+| `protocols/azure-openai.ts` | `azure-openai` | Azure URL pattern + api-key header |
+| `protocols/bedrock.ts` | `bedrock-converse` | AWS event-stream format |
+| `protocols/ollama.ts` | `ollama-chat` | Local Ollama, OpenAI-compatible |
+| `protocols/index.ts` | Registry | `ensureProtocolsRegistered()` lazy-loads all |
+
+### Providers (28)
+
+Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere, Azure OpenAI, AWS Bedrock, Google Vertex, Novita, Hyperbolic, Lepton, Nebius, DeepInfra, Anyscale, Replicate, Moonshot/Kimi, Zhipu/GLM, MiniMax, Qwen, Yi, Baichuan
 
 ### Model Cache
 
@@ -1146,43 +1167,33 @@ User request → ModelManager.resolveProviderModels(strategy)
 
 ---
 
-## Internalized Operations (Rust N-API)
+## Enhanced Operations (Pure TS)
 
-**Flags:** `NATIVE_GREP`, `NATIVE_SHELL` | **Path:** `native/grep/`, `native/shell/`, `src/native/`
+**Flags:** `PERSISTENT_SHELL`, `OUTPUT_MINIMIZER` | **Path:** `src/utils/persistentShell.ts`, `src/utils/outputMinimizer.ts`, `src/utils/grepCache.ts`
 
-### Native Grep
+### Grep Cache
 
-```
-native/grep/
-├── Cargo.toml          # grep-regex, grep-searcher, ignore, rayon
-└── src/lib.rs          # N-API exports: search()
-```
+`src/utils/grepCache.ts`
+- LRU cache (50 entries, 5s TTL)
+- Reuses results for same path + same pattern
+- Auto-invalidates after file edits
 
-TypeScript binding: `src/native/grepBinding.ts`
-- Automatic fallback to `rg` binary if native addon unavailable
-- Parallel file traversal via rayon
-- Respects `.gitignore`
-- Three output modes: content, files_with_matches, count
+### Persistent Shell
 
-### Native Shell
+`src/utils/persistentShell.ts`
+- Reuses shell child process, avoids repeated spawn (~5-15ms/cmd)
+- Session pool (max 4), isolated by session ID
+- Auto-reclaim after 60s idle
+- SIGINT interrupts current command without killing shell
+- Binding layer: `src/native/shellBinding.ts` (pure TS, interface-compatible)
 
-```
-native/shell/
-├── Cargo.toml          # brush-core, brush-builtins (vendored)
-└── src/lib.rs          # N-API exports: create/execute/destroy session
-```
+### Output Minimizer
 
-TypeScript binding: `src/native/shellBinding.ts`
-- Persistent sessions (state preserved across commands)
-- `createSession()` / `executeInSession()` / `destroySession()` / `executeOneshot()`
-- Fallback to `execa` subprocess when native unavailable
-
-### Build
-
-```bash
-cd native && cargo build --release
-# Cross-compile targets defined in native/build.sh
-```
+`src/utils/outputMinimizer.ts`
+- Rule engine: npm/pip/cargo/git/docker/bun tools
+- Compresses verbose output (>15 lines) into concise summaries
+- Only applies on success (exit 0)
+- Disable via `OUTPUT_MINIMIZER` flag
 
 ---
 

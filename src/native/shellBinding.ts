@@ -1,17 +1,17 @@
 /**
- * Native Shell TypeScript binding — wraps Rust brush-shell addon.
+ * Shell Binding — pure TypeScript persistent shell.
  *
- * Uses brush-shell (Rust bash interpreter) for in-process shell execution.
- * Supports persistent sessions. No fallback — if the native addon
- * is not compiled, this module throws at call time.
+ * Replaces the Rust brush-shell N-API addon with a child-process-based
+ * persistent shell that works out of the box on all platforms.
  */
 
 import {
-  shellAddon,
-  hasNativeShell,
-  type NativeShellOptions,
-  type NativeShellResult,
-} from './index.js'
+  getOrCreateSession,
+  execInSession,
+  destroySession as destroyPersistentSession,
+  isPersistentShellAvailable,
+  type ShellExecResult as PersistentResult,
+} from '../utils/persistentShell.js'
 
 export interface ShellExecOptions {
   command: string
@@ -28,53 +28,33 @@ export interface ShellExecResult {
   timedOut: boolean
 }
 
-// Session management for persistent shell instances
-const _sessions = new Map<string, number>()
+// Session management
+const _sessions = new Set<string>()
 
 /**
  * Create a persistent shell session.
- * Throws if native shell addon is not available.
+ * Pure TS — always available, no native addon needed.
  */
-export function createShellSession(id: string, cwd: string, env?: Record<string, string>): void {
-  if (!hasNativeShell || !shellAddon) {
-    throw new Error(
-      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
-      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
-    )
-  }
-
-  const sessionId = shellAddon.createSession(cwd, env ?? null)
-  _sessions.set(id, sessionId)
+export async function createShellSession(id: string, cwd: string, env?: Record<string, string>): Promise<void> {
+  await getOrCreateSession(id, cwd, env)
+  _sessions.add(id)
 }
 
 /**
  * Execute a command in a persistent shell session.
- * Throws if native shell is unavailable or session doesn't exist.
  */
-export function executeInSession(
+export async function executeInSession(
   sessionId: string,
   command: string,
   timeoutMs?: number,
-): ShellExecResult {
-  if (!hasNativeShell || !shellAddon) {
-    throw new Error(
-      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
-      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
-    )
-  }
-
-  const nativeId = _sessions.get(sessionId)
-  if (nativeId === undefined) {
-    throw new Error(`Shell session "${sessionId}" not found. Call createShellSession first.`)
-  }
-
-  const result: NativeShellResult = shellAddon.executeInSession(nativeId, command, timeoutMs)
+): Promise<ShellExecResult> {
+  const result: PersistentResult = await execInSession(sessionId, command, { timeoutMs })
   return {
-    exitCode: result.exit_code,
+    exitCode: result.exitCode,
     stdout: result.stdout,
     stderr: result.stderr,
-    durationMs: result.duration_ms,
-    timedOut: result.timed_out,
+    durationMs: result.durationMs,
+    timedOut: result.timedOut,
   }
 }
 
@@ -82,47 +62,33 @@ export function executeInSession(
  * Destroy a persistent shell session.
  */
 export function destroyShellSession(id: string): void {
-  if (!hasNativeShell || !shellAddon) return
-
-  const nativeId = _sessions.get(id)
-  if (nativeId !== undefined) {
-    shellAddon.destroySession(nativeId)
-    _sessions.delete(id)
-  }
+  _sessions.delete(id)
+  destroyPersistentSession(id)
 }
 
 /**
- * Execute a one-shot command (no persistent session).
- * Throws if native shell is unavailable.
+ * Execute a one-shot command (creates temp session, executes, destroys).
  */
-export function nativeShellExec(options: ShellExecOptions): ShellExecResult {
-  if (!hasNativeShell || !shellAddon) {
-    throw new Error(
-      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
-      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
-    )
-  }
-
-  const nativeOpts: NativeShellOptions = {
-    command: options.command,
-    cwd: options.cwd,
-    env: options.env,
-    timeout_ms: options.timeoutMs,
-  }
-
-  const result: NativeShellResult = shellAddon.executeOneshot(nativeOpts)
-  return {
-    exitCode: result.exit_code,
-    stdout: result.stdout,
-    stderr: result.stderr,
-    durationMs: result.duration_ms,
-    timedOut: result.timed_out,
+export async function nativeShellExec(options: ShellExecOptions): Promise<ShellExecResult> {
+  const tempId = `oneshot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  try {
+    await getOrCreateSession(tempId, options.cwd ?? process.cwd(), options.env)
+    const result = await execInSession(tempId, options.command, { timeoutMs: options.timeoutMs })
+    return {
+      exitCode: result.exitCode,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      durationMs: result.durationMs,
+      timedOut: result.timedOut,
+    }
+  } finally {
+    destroyPersistentSession(tempId)
   }
 }
 
 /**
- * Check if native shell is available.
+ * Check if shell is available — always true for pure TS impl.
  */
 export function isNativeShellAvailable(): boolean {
-  return hasNativeShell
+  return isPersistentShellAvailable()
 }

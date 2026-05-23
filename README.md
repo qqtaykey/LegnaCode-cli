@@ -18,15 +18,18 @@
 
 ---
 
-LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/claude-code) with deep enhancements — fully compatible with the original, while adding multimodal tools, smarter memory, better UX, and more.
+LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/claude-code) with deep enhancements — fully compatible with the original, while adding multi-provider routing, precision editing, real browser control, and more.
 
 ### Highlights
 
+🔀 **28 AI providers, 9 protocols** — Anthropic, OpenAI, Gemini, Bedrock, Azure, Vertex, Ollama, DeepSeek, Groq, xAI, Mistral, OpenRouter, and 16 more — one config switch\
+✏️ **Hashline precision editing** — Hash-anchored line references eliminate str_replace failures; 10x success rate on weaker models\
+🌐 **Real browser control** — Puppeteer + CDP with accessibility tree extraction, stealth scripts, Electron attachment\
+🐍 **Persistent Python kernel** — Stateful REPL across turns with rich display (DataFrames, plots, images)\
 🧠 **88% less memory tokens** — 4-layer memory stack with vector search replaces flat MEMORY.md injection\
 🎨 **6 multimodal tools** — Image, video, speech, music, vision, web search (MiniMax models)\
 ⚡ **Instant feedback** — Token counter from second 1, status in spinner line, no silent operations\
-🔌 **Pluggable memory** — DrawerStore (SQLite + TF-IDF), temporal knowledge graph, WAL audit\
-🤖 **Smarter agents** — RPC subprocess execution, autonomous skill detection, smart model routing
+🔌 **Config federation** — Auto-discovers rules and MCP from Cursor, Windsurf, Gemini, Codex, Copilot, Cline
 
 ---
 
@@ -34,7 +37,7 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
-| **2.1.5** | Hashline edit system (hash-anchored precision editing); multi-model routing (15+ providers, 8 protocols); internalized Rust N-API ops (grep/shell); real browser control (puppeteer+CDP); persistent Python kernel; config federation discovery |
+| **2.1.5** | Multi-provider routing (28 providers, 9 protocols); Hashline edit system; persistent shell + output minimizer; real browser control; persistent Python kernel; config federation discovery; Admin WebUI expanded (21 presets) |
 | **2.1.3** | Remove GrowthBook dependency from /loop cron gate; fix OpenAI stream bridge silently swallowing empty responses |
 | **2.1.2** | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
 | **2.1.1** | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
@@ -116,19 +119,53 @@ Built on [Claude Code CLI](https://github.com/anthropics/claude-code) by Anthrop
 <table>
 <tr><td>
 
-**🎨 Multimodal** (MiniMax)
-- Image / Video / Speech generation
-- Music generation / Vision / Web search
-- Auto-orchestrated pipelines
-- `/auth-minimax` configuration
+**🔀 Multi-Provider Routing**
+- 28 providers, 9 API protocols
+- Anthropic / OpenAI / Gemini / Bedrock / Azure / Vertex / Ollama
+- One-click profile switching (Admin WebUI)
+- Auto protocol inference from URL
 
 </td><td>
+
+**✏️ Hashline Edit**
+- Hash-anchored precision editing
+- 10x success rate on weaker models
+- 61% output token reduction
+- 3-way merge auto-recovery
+
+</td></tr>
+<tr><td>
+
+**🌐 Real Browser**
+- Puppeteer + CDP headless control
+- Accessibility tree extraction
+- Stealth anti-detection scripts
+- Electron app attachment
+
+</td><td>
+
+**🐍 Persistent Python**
+- Stateful kernel across turns
+- Rich display (DataFrames, plots, images)
+- venv/conda auto-detection
+- NDJSON protocol over stdin/stdout
+
+</td></tr>
+<tr><td>
 
 **🧠 Memory**
 - 4-layer stack (~800 tokens/turn)
 - TF-IDF vector search (<5ms)
 - Temporal knowledge graph
 - PreCompact auto-save
+
+</td><td>
+
+**🎨 Multimodal** (MiniMax)
+- Image / Video / Speech generation
+- Music generation / Vision / Web search
+- Auto-orchestrated pipelines
+- `/auth-minimax` configuration
 
 </td></tr>
 <tr><td>
@@ -141,28 +178,11 @@ Built on [Claude Code CLI](https://github.com/anthropics/claude-code) by Anthrop
 
 </td><td>
 
-**🛡️ Core**
-- 45+ built-in tools
-- Multi-cloud backends
-- MCP protocol support
-- Multi-agent collaboration
-
-</td></tr>
-<tr><td>
-
-**🖥️ UX**
-- Verbose on by default
-- Token counter from second 1
-- Status in spinner line
-- Interrupt reason visible
-
-</td><td>
-
 **🔧 DevOps**
-- WebUI admin panel
-- `legna migrate` tool
-- Pure TS syntax highlighting
-- Cross-platform binaries
+- WebUI admin panel (21 provider presets)
+- Config federation (Cursor/Windsurf/Gemini/Codex/Copilot)
+- Persistent shell sessions
+- Output minimizer (git/npm/cargo)
 
 </td></tr>
 </table>

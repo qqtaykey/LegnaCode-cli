@@ -269,8 +269,8 @@ if (feature('VOICE_MODE')) {
 | `TEMPLATES` | 模板系统 (new/list/reply) |
 | `HASHLINE_EDIT` | Hashline 编辑系统（哈希锚点精确编辑） |
 | `MULTI_PROVIDER` | 多模型路由（15+ 提供商，8 种协议） |
-| `NATIVE_GREP` | 进程内 grep（Rust N-API） |
-| `NATIVE_SHELL` | 进程内 shell（Rust N-API，brush-shell） |
+| `PERSISTENT_SHELL` | 持久 Shell 会话（复用子进程，避免重复 spawn） |
+| `OUTPUT_MINIMIZER` | 输出最小化器（压缩 git/npm/cargo 冗长输出） |
 | `REAL_BROWSER` | 真实浏览器控制（puppeteer-core + CDP） |
 | `PYTHON_KERNEL` | 持久 Python 环境（有状态 kernel） |
 | `CONFIG_DISCOVERY` | 配置联邦发现（Cursor/Windsurf/Gemini/Codex/Cline/Copilot） |
@@ -1124,12 +1124,33 @@ cd extensions/legna-office && npx @vscode/vsce package
                     ▼
               协议注册表 → 懒加载协议模块
                     │
-                    ├─ anthropic-messages（现有）
-                    ├─ openai-completions（OpenAI、DeepSeek、Groq 等）
+                    ├─ anthropic-messages（原生）
+                    ├─ openai-completions（OpenAI、DeepSeek、Groq、xAI 等）
+                    ├─ openai-responses（OpenAI Responses API）
                     ├─ google-generative-ai（Gemini）
+                    ├─ google-vertex（Vertex AI，OAuth）
+                    ├─ azure-openai（Azure，api-key + api-version）
+                    ├─ bedrock-converse（AWS Bedrock，SigV4 + event-stream）
                     ├─ ollama-chat（本地模型）
-                    └─ ...（共 8 种协议）
+                    └─ cursor-agent（预留）
 ```
+
+### 协议实现
+
+| 文件 | 协议 | 说明 |
+|------|------|------|
+| `protocols/openai.ts` | `openai-completions` | SSE 流式，兼容 20+ 提供商 |
+| `protocols/openai-responses.ts` | `openai-responses` | OpenAI 新 Responses API，event-based |
+| `protocols/google.ts` | `google-generative-ai` | Gemini SSE，API key 认证 |
+| `protocols/vertex.ts` | `google-vertex` | Vertex AI，OAuth Bearer token |
+| `protocols/azure-openai.ts` | `azure-openai` | Azure URL 模式 + api-key header |
+| `protocols/bedrock.ts` | `bedrock-converse` | AWS event-stream 格式 |
+| `protocols/ollama.ts` | `ollama-chat` | 本地 Ollama，OpenAI 兼容 |
+| `protocols/index.ts` | 注册表 | `ensureProtocolsRegistered()` 懒加载 |
+
+### 提供商（28 个）
+
+Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere, Azure OpenAI, AWS Bedrock, Google Vertex, Novita, Hyperbolic, Lepton, Nebius, DeepInfra, Anyscale, Replicate, Moonshot/Kimi, Zhipu/GLM, MiniMax, Qwen, Yi, Baichuan
 
 ### 模型缓存
 
@@ -1146,43 +1167,33 @@ cd extensions/legna-office && npx @vscode/vsce package
 
 ---
 
-## 内化操作（Rust N-API）
+## 增强操作（纯 TS）
 
-**Flags:** `NATIVE_GREP`, `NATIVE_SHELL` | **路径:** `native/grep/`, `native/shell/`, `src/native/`
+**Flags:** `PERSISTENT_SHELL`, `OUTPUT_MINIMIZER` | **路径:** `src/utils/persistentShell.ts`, `src/utils/outputMinimizer.ts`, `src/utils/grepCache.ts`
 
-### Native Grep
+### Grep 缓存
 
-```
-native/grep/
-├── Cargo.toml          # grep-regex, grep-searcher, ignore, rayon
-└── src/lib.rs          # N-API 导出: search()
-```
+`src/utils/grepCache.ts`
+- LRU 缓存（50 条目，5s TTL）
+- 同路径 + 同 pattern 复用结果
+- 文件编辑后自动失效
 
-TypeScript 绑定: `src/native/grepBinding.ts`
-- Native addon 不可用时自动 fallback 到 `rg` 二进制
-- 通过 rayon 并行文件遍历
-- 尊重 `.gitignore`
-- 三种输出模式: content, files_with_matches, count
+### 持久 Shell
 
-### Native Shell
+`src/utils/persistentShell.ts`
+- 复用 shell 子进程，避免重复 spawn（~5-15ms/次）
+- 会话池（最多 4 个），按 session ID 隔离
+- 空闲 60s 自动回收
+- SIGINT 中断当前命令但不杀 shell
+- 绑定层: `src/native/shellBinding.ts`（纯 TS，接口兼容）
 
-```
-native/shell/
-├── Cargo.toml          # brush-core, brush-builtins (vendored)
-└── src/lib.rs          # N-API 导出: create/execute/destroy session
-```
+### 输出最小化器
 
-TypeScript 绑定: `src/native/shellBinding.ts`
-- 持久会话（跨命令保持状态）
-- `createSession()` / `executeInSession()` / `destroySession()` / `executeOneshot()`
-- Native 不可用时 fallback 到 `execa` 子进程
-
-### 构建
-
-```bash
-cd native && cargo build --release
-# 交叉编译目标定义在 native/build.sh
-```
+`src/utils/outputMinimizer.ts`
+- 规则引擎: npm/pip/cargo/git/docker/bun 等工具
+- 超过 15 行的冗长输出自动压缩为摘要
+- 仅在命令成功（exit 0）时生效
+- 可通过 `OUTPUT_MINIMIZER` flag 关闭
 
 ---
 

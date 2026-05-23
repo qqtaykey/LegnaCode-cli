@@ -21,6 +21,7 @@ export type ApiProtocol =
   | 'bedrock-converse'
   | 'azure-openai'
   | 'google-vertex'
+  | 'cursor-agent'
 
 export interface ProtocolStreamOptions {
   model: string
@@ -88,4 +89,27 @@ export function inferProtocolFromUrl(baseUrl: string): ApiProtocol {
   if (url.includes('aiplatform.googleapis.com')) return 'google-vertex'
   // Default to OpenAI-compatible
   return 'openai-completions'
+}
+
+/**
+ * Initialize all built-in protocols (lazy-loaded on first use).
+ */
+export async function ensureProtocolsRegistered(): Promise<void> {
+  if (_protocols.size > 0) return
+
+  const { OpenAICompletionsProtocol } = await import('./openai.js')
+  const { GoogleGenerativeAIProtocol } = await import('./google.js')
+  const { OllamaChatProtocol } = await import('./ollama.js')
+  const { AzureOpenAIProtocol } = await import('./azure-openai.js')
+  const { BedrockConverseProtocol } = await import('./bedrock.js')
+  const { GoogleVertexProtocol } = await import('./vertex.js')
+  const { OpenAIResponsesProtocol } = await import('./openai-responses.js')
+
+  registerProtocol(OpenAICompletionsProtocol)
+  registerProtocol(GoogleGenerativeAIProtocol)
+  registerProtocol(OllamaChatProtocol)
+  registerProtocol(AzureOpenAIProtocol)
+  registerProtocol(BedrockConverseProtocol)
+  registerProtocol(GoogleVertexProtocol)
+  registerProtocol(OpenAIResponsesProtocol)
 }
