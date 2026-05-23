@@ -2,6 +2,20 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.7] - 2026-05-24
+
+### 新功能
+
+- **配置联邦发现接入启动流程** — 7 个 provider（cursor、windsurf、vscode、github、gemini、codex、cline）的发现模块正式接入。发现的 MCP 服务器以最低优先级合并到 `mcp/config.ts`；发现的规则合并到 `claudemd.ts` 记忆文件。`CONFIG_DISCOVERY` flag 控制。非阻塞，try/catch 包裹。
+- **Feature Flags 全部声明** — `CONFIG_DISCOVERY`、`HASHLINE_EDIT`、`MULTI_PROVIDER`、`OML_BUILTIN`、`OUTPUT_MINIMIZER`、`PERSISTENT_SHELL`、`REAL_BROWSER` 补入 `bun-bundle.d.ts` 类型声明。所有 flag 编译时可识别。
+- **WebUI 预设切换清除旧字段** — 切换 `apiFormat` 时自动清除不属于新格式的 provider 字段（如从 Azure 切走时清 Azure keys）。切换到非 Anthropic 格式时重置 `kiroGateway`。
+
+### 修复
+
+- **MiniMax 6 个工具类型错误** — Image、Music、Speech、Video、Vision、WebSearch 全部修复：getter `inputSchema`、3 参数 `renderToolResultMessage`、`async description()`、正确的 `satisfies ToolDef<InputSchema, Output>`。
+- **REPLTool buildTool 签名** — 适配当前 API：async description、正确 call 签名、`{ data }` 返回格式、checkPermissions。
+- **WebBrowserTool Engine API** — 修复 `openTab`/`screenshotTab`/`clickElement`/`typeInElement`/`getAccessibilityTree` 传参为 string ID（非对象）。用 `page.evaluate` 替代不存在的 `scrollPage`。
+
 ## [2.1.6] - 2026-05-24
 
 ### 新功能

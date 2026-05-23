@@ -4,6 +4,20 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.7] - 2026-05-24
+
+### Features
+
+- **Config Federation Discovery Wired** — The 7-provider discovery module (`cursor`, `windsurf`, `vscode`, `github`, `gemini`, `codex`, `cline`) is now integrated into startup. Discovered MCP servers merge into `mcp/config.ts` at lowest priority; discovered rules merge into `claudemd.ts` memory files. Gated by `CONFIG_DISCOVERY` flag. Non-blocking, try/catch wrapped.
+- **Feature Flags Declared** — Added `CONFIG_DISCOVERY`, `HASHLINE_EDIT`, `MULTI_PROVIDER`, `OML_BUILTIN`, `OUTPUT_MINIMIZER`, `PERSISTENT_SHELL`, `REAL_BROWSER` to `bun-bundle.d.ts` type declarations. All flags now recognized at compile time.
+- **WebUI Preset Switching** — Changing `apiFormat` now clears provider-specific fields that don't belong to the new format (Azure keys when switching away from Azure, Bedrock keys when switching away from Bedrock, etc.). Also resets `kiroGateway` when switching to non-Anthropic formats.
+
+### Fixes
+
+- **MiniMax 6 Tools Type Errors** — All 6 MiniMax tools (Image, Music, Speech, Video, Vision, WebSearch) fixed to match `buildTool` API: getter `inputSchema`, 3-param `renderToolResultMessage`, `async description()`, correct `satisfies ToolDef<InputSchema, Output>`.
+- **REPLTool buildTool Signature** — Adapted to current API: async description, proper call signature, `{ data }` return format, checkPermissions.
+- **WebBrowserTool Engine API** — Fixed `openTab`/`screenshotTab`/`clickElement`/`typeInElement`/`getAccessibilityTree` to pass string IDs (not object handles). Replaced non-existent `scrollPage` with direct `page.evaluate` scroll.
+
 ## [2.1.6] - 2026-05-24
 
 ### Features
