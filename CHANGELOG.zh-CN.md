@@ -2,6 +2,19 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.6] - 2026-05-24
+
+### 新功能
+
+- **Hashline Edit 集成** — 当 `HASHLINE_EDIT` feature flag 开启时，`addLineNumbers()` 输出 hash 锚点格式（`42sr|code`）而非纯 tab 分隔格式。`stripLineNumberPrefix()` 同步更新以解析两种格式。
+- **系统提示词工具路由引导** — 新增 WebBrowser（页面导航、截图、交互）、MiniMax（图像/视频/音乐/语音/搜索生成）、REPL（Python 执行、数据分析）、HashlineEdit（大文件编辑优先）的引导段落。
+- **FileEditTool 提示词更新** — HASHLINE_EDIT 开启时，告知模型行号前缀格式为 `42sr|`，引导模型在大文件编辑时优先使用 HashlineEdit。
+
+### 修复
+
+- **HashlineEditTool 类型错误** — 适配当前 `buildTool` API 要求：补充 `description()`、`maxResultSizeChars`、`renderToolUseMessage`、`mapToolResultToToolResultBlockParam` 及正确的 `call` 签名。
+- **prompts.ts 缺失 import** — 补充 `getAntModelOverrideConfig` 从 `../utils/model/antModels.js` 的导入。
+
 ## [2.1.5] - 2026-05-23
 
 ### 新功能

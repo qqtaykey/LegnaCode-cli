@@ -4,6 +4,19 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.6] - 2026-05-24
+
+### Features
+
+- **Hashline Edit Integration** — When `HASHLINE_EDIT` feature flag is enabled, `addLineNumbers()` outputs hash-anchored format (`42sr|code`) instead of plain tab-separated format. `stripLineNumberPrefix()` updated to parse both formats.
+- **System Prompt Tool Routing** — Added guidance sections for WebBrowser (page navigation, screenshots, interaction), MiniMax (image/video/music/speech/search generation), REPL (Python execution, data analysis), and HashlineEdit (large file editing preference).
+- **FileEditTool Prompt Update** — When HASHLINE_EDIT is enabled, informs the model about the `42sr|` line prefix format and guides it to prefer HashlineEdit for large edits.
+
+### Fixes
+
+- **HashlineEditTool Type Errors** — Adapted to current `buildTool` API requirements: added `description()`, `maxResultSizeChars`, `renderToolUseMessage`, `mapToolResultToToolResultBlockParam`, and correct `call` signature.
+- **Missing Import in prompts.ts** — Added missing `getAntModelOverrideConfig` import from `../utils/model/antModels.js`.
+
 ## [2.1.5] - 2026-05-23
 
 ### Features
