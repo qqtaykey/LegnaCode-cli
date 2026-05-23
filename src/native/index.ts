@@ -156,3 +156,8 @@ export const hasNativeShell = true // Always available via TS persistent shell
 // ── Availability checks ────────────────────────────────────────
 
 export const hasAnyNativeAddon = hasNativeSandbox || hasNativeFileSearch || hasNativeApplyPatch || hasNativeGrep || hasNativeShell
+
+// ── Re-export TS binding implementations ──────────────────────
+// These provide the actual grep/shell functionality (pure TS, no native addon).
+export { nativeGrepSearch, isNativeGrepAvailable } from './grepBinding.js'
+export { nativeShellExec, createShellSession, executeInSession, destroyShellSession, isNativeShellAvailable } from './shellBinding.js'

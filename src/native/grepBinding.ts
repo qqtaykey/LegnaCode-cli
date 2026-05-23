@@ -61,8 +61,9 @@ export async function nativeGrepSearch(options: GrepSearchOptions): Promise<Grep
 
   // Execute ripgrep with --json for structured output
   try {
-    const output = await ripGrep(options.pattern, options.rootDir, args)
-    const result = parseJsonOutput(output, maxResults)
+    const fullArgs = [...args, options.pattern, options.rootDir]
+    const output = await ripGrep(fullArgs, options.rootDir, AbortSignal.timeout(30_000))
+    const result = parseJsonOutput(output.join('\n'), maxResults)
 
     // Cache the result
     setCachedGrep(options.pattern, options.rootDir, cacheKey, JSON.stringify(result))

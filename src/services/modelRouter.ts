@@ -10,6 +10,10 @@
  */
 
 import { logForDebugging } from '../utils/debug.js'
+// Side-effect import: ensures modelManager (and its protocol registry) is
+// included in the bundle. modelManager has no top-level side effects itself,
+// but its exports are used at runtime via dynamic resolution.
+import './modelManager.js'
 
 export type TaskComplexity = 'simple' | 'medium' | 'complex'
 

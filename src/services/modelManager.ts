@@ -8,9 +8,9 @@ import {
   setCachedModels,
   type CachedModelEntry,
   type ModelRefreshStrategy,
-} from '../modelCache/index.js'
-import { type ApiProtocol, inferProtocolFromUrl } from '../../utils/model/protocols/index.js'
-import { logForDebugging } from '../../utils/debug.js'
+} from './modelCache/index.js'
+import { type ApiProtocol, inferProtocolFromUrl } from '../utils/model/protocols/index.js'
+import { logForDebugging } from '../utils/debug.js'
 
 export interface ProviderConfig {
   id: string
