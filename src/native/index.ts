@@ -98,4 +98,70 @@ export const applyPatchAddon = tryLoadAddon<ApplyPatchAddon>('apply-patch')
 export const hasNativeSandbox = sandboxAddon !== null
 export const hasNativeFileSearch = fileSearchAddon !== null
 export const hasNativeApplyPatch = applyPatchAddon !== null
-export const hasAnyNativeAddon = hasNativeSandbox || hasNativeFileSearch || hasNativeApplyPatch
+
+// ── Native Grep addon ──────────────────────────────────────────
+
+export interface NativeGrepOptions {
+  pattern: string
+  root_dir: string
+  is_regex?: boolean
+  case_insensitive?: boolean
+  max_results?: number
+  context_before?: number
+  context_after?: number
+  glob_filter?: string
+  file_type?: string
+  respect_gitignore?: boolean
+}
+
+export interface NativeGrepMatch {
+  path: string
+  line_number: number
+  line_content: string
+  context_before?: string[]
+  context_after?: string[]
+}
+
+export interface NativeGrepResult {
+  matches: NativeGrepMatch[]
+  files_searched: number
+  truncated: boolean
+}
+
+interface GrepAddon {
+  grepSearch(options: NativeGrepOptions): NativeGrepResult
+}
+
+export const grepAddon = tryLoadAddon<GrepAddon>('grep')
+export const hasNativeGrep = grepAddon !== null
+
+// ── Native Shell addon ──────────────────────────────────────────
+
+export interface NativeShellOptions {
+  command: string
+  cwd?: string
+  env?: Record<string, string>
+  timeout_ms?: number
+}
+
+export interface NativeShellResult {
+  exit_code: number
+  stdout: string
+  stderr: string
+  duration_ms: number
+  truncated: boolean
+}
+
+interface ShellAddon {
+  createSession(cwd: string): number
+  executeInSession(sessionId: number, command: string, timeoutMs?: number): NativeShellResult
+  destroySession(sessionId: number): void
+  executeOneshot(options: NativeShellOptions): NativeShellResult
+}
+
+export const shellAddon = tryLoadAddon<ShellAddon>('shell')
+export const hasNativeShell = shellAddon !== null
+
+// ── Availability checks ────────────────────────────────────────
+
+export const hasAnyNativeAddon = hasNativeSandbox || hasNativeFileSearch || hasNativeApplyPatch || hasNativeGrep || hasNativeShell
