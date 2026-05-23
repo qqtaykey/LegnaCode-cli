@@ -2,6 +2,14 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.3] - 2026-05-23
+
+### 修复
+
+- **`/loop` 定时任务不触发** — 移除 `isKairosCronEnabled()` 和 `isDurableCronEnabled()` 对 GrowthBook 远程 feature flag (`tengu_kairos_cron`) 的依赖。定时调度现在仅依赖编译时 `AGENT_TRIGGERS` 标志 + 本地 `CLAUDE_CODE_DISABLE_CRON` 环境变量。LegnaCode 本地控制自己的功能开关。
+- **OpenAI 流式桥接空响应静默吞错误** — 当 OpenAI 兼容 API（DeepSeek 等）流在没有 `finish_reason` 的情况下结束且无任何内容输出时，抛出错误而非静默视为成功的 `end_turn`。如果流中有未完成的 tool_call blocks，推断 `tool_use` 作为 stop_reason 以确保 agentic 循环继续执行。
+- **Cron prompt 路径引用** — 修复 CronDelete/CronList 工具 prompt 中的 `.claude/scheduled_tasks.json` → `.legna/scheduled_tasks.json`。
+
 ## [2.1.2] - 2026-05-07
 
 ### 修复

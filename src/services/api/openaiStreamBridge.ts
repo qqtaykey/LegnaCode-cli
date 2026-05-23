@@ -53,10 +53,14 @@ function mapFinishReason(reason: string | null): string {
     case 'function_call': return 'tool_use' // deprecated but some providers still use it
     case 'content_filter': return 'content_filter' // MiMo/DeepSeek content safety
     case 'sensitive': return 'content_filter' // GLM content safety
-    case 'repetition_truncation': return 'end_turn' // MiMo repetition detection
-    case 'network_error': return 'end_turn' // GLM inference error
     case 'model_context_window_exceeded': return 'max_tokens' // GLM context overflow
-    default: return 'end_turn'
+    case 'repetition_truncation':
+    case 'network_error':
+      logForDebugging(`[openai-bridge] Non-normal finish_reason: ${reason}`)
+      return 'end_turn'
+    default:
+      if (reason) logForDebugging(`[openai-bridge] Unknown finish_reason: ${reason}`)
+      return 'end_turn'
   }
 }
 
@@ -270,6 +274,7 @@ export async function* openAIStreamingRequest(
   }
 
   // Stream ended without explicit finish_reason — close gracefully
+  const hasAnyContent = thinkingBlockOpen || textBlockOpen || toolCallBlocks.size > 0
   if (thinkingBlockOpen) {
     yield { type: 'content_block_stop', index: contentBlockIndex }
     contentBlockIndex++
@@ -281,9 +286,22 @@ export async function* openAIStreamingRequest(
   for (const [, info] of toolCallBlocks) {
     yield { type: 'content_block_stop', index: info.blockIndex }
   }
+
+  // If stream ended with no content at all, this is an API anomaly — not a
+  // legitimate end_turn. Throw so the caller can surface the error.
+  if (!hasAnyContent) {
+    throw new Error('OpenAI-compatible API returned empty response (stream ended without content or finish_reason)')
+  }
+
+  // If there are open tool_call blocks, the model was generating tool calls
+  // when the stream was cut — treat as tool_use so the loop continues.
+  const inferredStopReason = toolCallBlocks.size > 0 ? 'tool_use' : 'end_turn'
+  if (toolCallBlocks.size > 0) {
+    logForDebugging(`[openai-bridge] Stream ended without finish_reason but has ${toolCallBlocks.size} tool calls — inferring tool_use`)
+  }
   yield {
     type: 'message_delta',
-    delta: { stop_reason: 'end_turn', stop_sequence: null },
+    delta: { stop_reason: inferredStopReason, stop_sequence: null },
     usage: { output_tokens: outputTokens },
   }
   yield { type: 'message_stop' }

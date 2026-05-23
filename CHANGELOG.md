@@ -4,6 +4,14 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.3] - 2026-05-23
+
+### Fixes
+
+- **`/loop` cron not firing** — Removed GrowthBook `tengu_kairos_cron` remote feature flag dependency from `isKairosCronEnabled()` and `isDurableCronEnabled()`. Cron scheduling now only depends on the build-time `AGENT_TRIGGERS` flag + local `CLAUDE_CODE_DISABLE_CRON` env var. LegnaCode controls its own features locally.
+- **OpenAI stream bridge silent empty response** — When an OpenAI-compatible API (DeepSeek, etc.) stream ends without `finish_reason` and has produced no content, throw an error instead of silently treating it as a successful `end_turn`. If the stream has open tool_call blocks, infer `tool_use` stop_reason so the agentic loop continues.
+- **Cron prompt path references** — Fixed `.claude/scheduled_tasks.json` → `.legna/scheduled_tasks.json` in CronDelete/CronList tool prompts.
+
 ## [2.1.2] - 2026-05-07
 
 ### Fixes
