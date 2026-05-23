@@ -5,13 +5,14 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, ENDPOINTS } from './cli
 import { MINIMAX_MUSIC_TOOL_NAME, MINIMAX_MUSIC_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     prompt: z.string().describe('Music generation prompt describing style, mood, instruments'),
     lyrics: z.string().optional().describe('Optional lyrics for vocal music'),
     duration: z.number().optional().describe('Duration in seconds (default 30)'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type Output = {
   result: string
@@ -22,8 +23,10 @@ type Output = {
 export const MiniMaxMusicGenerateTool = buildTool({
   name: MINIMAX_MUSIC_TOOL_NAME,
   searchHint: 'generate create music song audio melody',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_MUSIC_DESCRIPTION },
   userFacingName: () => 'MiniMax Music',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -42,7 +45,7 @@ export const MiniMaxMusicGenerateTool = buildTool({
   renderToolUseMessage(input) {
     return renderMiniMaxToolUse('Generating music', input.prompt)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -77,4 +80,4 @@ export const MiniMaxMusicGenerateTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)

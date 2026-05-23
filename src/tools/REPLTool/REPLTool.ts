@@ -14,31 +14,44 @@ const inputSchema = z.object({
   reset: z.boolean().optional().describe('Reset the kernel session before executing'),
 })
 
+type REPLInput = z.infer<typeof inputSchema>
+
 // Use a fixed session ID per CLI session
 const SESSION_ID = `repl_${process.pid}`
 
 export const REPLTool = buildTool({
   name: REPL_TOOL_NAME,
-  description: 'Execute Python code in a persistent environment. Variables and imports persist across calls.',
-  searchHint: 'python repl execute code run script',
+  maxResultSizeChars: 100_000,
+  async description() {
+    return 'Execute Python code in a persistent environment. Variables and imports persist across calls.'
+  },
+  async prompt() {
+    return (
+      'Use this tool to execute Python code in a persistent session. ' +
+      'Variables, imports, and state persist between calls. ' +
+      'Useful for data analysis, calculations, file processing, and testing Python snippets. ' +
+      'The environment auto-detects virtualenvs and conda environments.'
+    )
+  },
   inputSchema,
-  isReadOnly: () => false,
-  prompt: () =>
-    'Use this tool to execute Python code in a persistent session. ' +
-    'Variables, imports, and state persist between calls. ' +
-    'Useful for data analysis, calculations, file processing, and testing Python snippets. ' +
-    'The environment auto-detects virtualenvs and conda environments.',
-  userFacingName: () => 'Python REPL',
-  renderToolUseMessage(input: z.infer<typeof inputSchema>) {
+  isReadOnly() {
+    return false
+  },
+  userFacingName() {
+    return 'Python REPL'
+  },
+  renderToolUseMessage(input: REPLInput) {
     const preview = input.code.split('\n')[0].slice(0, 60)
     return `Python: ${preview}${input.code.length > 60 ? '...' : ''}`
   },
-  renderToolResultMessage(result: unknown) {
-    if (typeof result === 'string') return result
-    const r = result as { type?: string; text?: string }
-    return r?.text ?? JSON.stringify(result)
+  mapToolResultToToolResultBlockParam(output: string, toolUseID: string) {
+    return {
+      tool_use_id: toolUseID,
+      type: 'tool_result' as const,
+      content: output || '(no output)',
+    }
   },
-  async call(input: z.infer<typeof inputSchema>) {
+  async call(input: REPLInput, _ctx: any, _canUse: any, _parent: any, _progress?: any) {
     const cwd = getCwd()
 
     // Reset kernel if requested
@@ -51,7 +64,7 @@ export const REPLTool = buildTool({
       try {
         await startKernel(SESSION_ID, cwd)
       } catch (e: any) {
-        return { type: 'text' as const, text: `Failed to start Python kernel: ${e.message}` }
+        return { data: `Failed to start Python kernel: ${e.message}` }
       }
     }
 
@@ -60,7 +73,7 @@ export const REPLTool = buildTool({
       const response = await executeCode(SESSION_ID, input.code)
 
       if (response.type === 'error') {
-        return { type: 'text' as const, text: `Error:\n${response.traceback ?? response.text ?? 'Unknown error'}` }
+        return { data: `Error:\n${response.traceback ?? response.text ?? 'Unknown error'}` }
       }
 
       // Build output
@@ -70,22 +83,18 @@ export const REPLTool = buildTool({
       // Handle rich display (images etc)
       if (response.data) {
         for (const [mime, content] of Object.entries(response.data)) {
-          if (mime === 'image/png' || mime === 'image/jpeg') {
-            // Return as image block
-            return {
-              type: 'image' as const,
-              source: { type: 'base64', media_type: mime, data: content },
-            }
-          }
           if (mime === 'text/plain') {
             parts.push(content)
           }
         }
       }
 
-      return { type: 'text' as const, text: parts.join('\n') || '(no output)' }
+      return { data: parts.join('\n') || '(no output)' }
     } catch (e: any) {
-      return { type: 'text' as const, text: `Execution error: ${e.message}` }
+      return { data: `Execution error: ${e.message}` }
     }
+  },
+  async checkPermissions(_input: REPLInput, _context: any): Promise<any> {
+    return { behavior: 'allow' as const, updatedInput: _input }
   },
 })

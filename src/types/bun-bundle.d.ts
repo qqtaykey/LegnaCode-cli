@@ -71,6 +71,7 @@ declare module 'bun:bundle' {
       | 'PERFETTO_TRACING'
       | 'POWERSHELL_AUTO_MODE'
       | 'PROACTIVE'
+      | 'PYTHON_KERNEL'
       | 'PROMPT_CACHE_BREAK_DETECTION'
       | 'QUICK_SEARCH'
       | 'REACTIVE_COMPACT'
@@ -97,6 +98,13 @@ declare module 'bun:bundle' {
       | 'UPLOAD_USER_SETTINGS'
       | 'VERIFICATION_AGENT'
       | 'VOICE_MODE'
+      | 'CONFIG_DISCOVERY'
+      | 'HASHLINE_EDIT'
+      | 'MULTI_PROVIDER'
+      | 'OML_BUILTIN'
+      | 'OUTPUT_MINIMIZER'
+      | 'PERSISTENT_SHELL'
+      | 'REAL_BROWSER'
       | 'WEB_BROWSER_TOOL'
       | 'WORKFLOW_SCRIPTS',
   ): boolean

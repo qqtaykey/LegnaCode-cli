@@ -56,6 +56,12 @@ import {
 } from './types.js'
 import { getProjectMcpServerStatus } from './utils.js'
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+const discoveryInit = feature('CONFIG_DISCOVERY')
+  ? (require('../discovery/init.js') as typeof import('../discovery/init.js'))
+  : null
+/* eslint-enable @typescript-eslint/no-require-imports */
+
 /**
  * Get the path to the managed MCP configuration file
  */
@@ -1228,9 +1234,23 @@ export async function getClaudeCodeMcpConfigs(
     })
   }
 
-  // Merge in order of precedence: plugin < user < project < local
+  // Merge in order of precedence: discovered < plugin < user < project < local
+  // Discovery results have lowest priority — they never override user configs.
+  let discoveredServers: Record<string, ScopedMcpServerConfig> = {}
+  if (feature('CONFIG_DISCOVERY') && discoveryInit) {
+    try {
+      const raw = await discoveryInit.discoverMcpServers(getCwd())
+      for (const [name, config] of Object.entries(raw)) {
+        discoveredServers[name] = { ...config, scope: 'dynamic' } as ScopedMcpServerConfig
+      }
+    } catch {
+      // Discovery is best-effort — never block startup
+    }
+  }
+
   const configs = Object.assign(
     {},
+    discoveredServers,
     dedupedPluginServers,
     userServers,
     approvedProjectServers,

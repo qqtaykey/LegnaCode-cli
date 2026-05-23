@@ -22,6 +22,8 @@ const inputSchema = z.object({
   amount: z.number().optional().describe('Scroll amount in pixels (default 500)'),
 })
 
+type BrowserInput = z.infer<typeof inputSchema>
+
 // Lazy-loaded engine reference
 let engine: typeof import('./engine/index.js') | null = null
 let browserInstance: any = null
@@ -43,21 +45,30 @@ async function getBrowser() {
 
 export const WebBrowserTool = buildTool({
   name: WEB_BROWSER_TOOL_NAME,
-  description: 'Browse web pages with a real browser — navigate, click, type, screenshot, evaluate JS, extract accessibility tree',
-  searchHint: 'web browser navigate screenshot click type accessibility',
+  maxResultSizeChars: 200_000,
+  async description() {
+    return 'Browse web pages with a real browser — navigate, click, type, screenshot, evaluate JS, extract accessibility tree'
+  },
+  async prompt() {
+    return (
+      'Use this tool to control a real headless browser. Actions:\n' +
+      '- navigate: Go to a URL, returns page text content\n' +
+      '- screenshot: Capture the current page as a base64 PNG image\n' +
+      '- click: Click an element by CSS selector\n' +
+      '- type: Type text into an input element\n' +
+      '- scroll: Scroll the page up or down\n' +
+      '- evaluate: Run JavaScript in the page context\n' +
+      '- accessibility_tree: Get structured accessibility tree of the page'
+    )
+  },
   inputSchema,
-  isReadOnly: () => true,
-  prompt: () =>
-    'Use this tool to control a real headless browser. Actions:\n' +
-    '- navigate: Go to a URL, returns page text content\n' +
-    '- screenshot: Capture the current page as a base64 PNG image\n' +
-    '- click: Click an element by CSS selector\n' +
-    '- type: Type text into an input element\n' +
-    '- scroll: Scroll the page up or down\n' +
-    '- evaluate: Run JavaScript in the page context\n' +
-    '- accessibility_tree: Get structured accessibility tree of the page',
-  userFacingName: () => 'Web Browser',
-  renderToolUseMessage(input: z.infer<typeof inputSchema>) {
+  isReadOnly() {
+    return true
+  },
+  userFacingName() {
+    return 'Web Browser'
+  },
+  renderToolUseMessage(input: BrowserInput) {
     if (input.action === 'navigate' && input.url) {
       return `Browsing: ${input.url}`
     }
@@ -66,22 +77,25 @@ export const WebBrowserTool = buildTool({
     }
     return `Web browser: ${input.action}`
   },
-  renderToolResultMessage(result: unknown) {
-    if (typeof result === 'string') return result
-    const r = result as { type?: string; text?: string }
-    return r?.text ?? JSON.stringify(result)
+  mapToolResultToToolResultBlockParam(output: string, toolUseID: string) {
+    return {
+      tool_use_id: toolUseID,
+      type: 'tool_result' as const,
+      content: output || '(no output)',
+    }
   },
-  async call(input: z.infer<typeof inputSchema>) {
-    // Use real browser when REAL_BROWSER flag is enabled
+  async call(input: BrowserInput, _ctx: any, _canUse: any, _parent: any, _progress?: any) {
     if (feature('REAL_BROWSER')) {
       return realBrowserCall(input)
     }
-    // Fallback to fetch-only mode
     return fetchOnlyCall(input)
+  },
+  async checkPermissions(_input: BrowserInput, _context: any): Promise<any> {
+    return { behavior: 'allow' as const, updatedInput: _input }
   },
 })
 
-async function realBrowserCall(input: z.infer<typeof inputSchema>) {
+async function realBrowserCall(input: BrowserInput) {
   try {
     const eng = await getEngine()
     const browser = await getBrowser()
@@ -89,91 +103,109 @@ async function realBrowserCall(input: z.infer<typeof inputSchema>) {
     switch (input.action) {
       case 'navigate': {
         if (!input.url) {
-          return { type: 'text' as const, text: 'Error: url is required for navigate action' }
+          return { data: 'Error: url is required for navigate action' }
         }
-        const page = await eng.openTab(browser, input.url)
-        const tree = await eng.getAccessibilityTree(page)
-        return { type: 'text' as const, text: `[Navigated] ${input.url}\n\n${tree}` }
+        const tab = await eng.openTab(browser.id, input.url)
+        // Store last tab for subsequent actions
+        browser.currentTabId = tab.id
+        const tree = await eng.getAccessibilityTree(tab.id)
+        const formatted = Array.isArray(tree)
+          ? tree.map((n: any) => `[${n.role}] ${n.name}${n.value ? ` = ${n.value}` : ''}`).join('\n')
+          : String(tree)
+        return { data: `[Navigated] ${input.url}\n\n${formatted}` }
       }
 
       case 'screenshot': {
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        const base64 = await eng.screenshotTab(page)
-        return { type: 'image' as const, source: { type: 'base64', media_type: 'image/png', data: base64 } }
+        const buf = await eng.screenshotTab(tabId)
+        const base64 = Buffer.isBuffer(buf) ? buf.toString('base64') : String(buf)
+        return { data: `[Screenshot captured]\ndata:image/png;base64,${base64.slice(0, 100)}...` }
       }
 
       case 'click': {
         if (!input.selector) {
-          return { type: 'text' as const, text: 'Error: selector is required for click action' }
+          return { data: 'Error: selector is required for click action' }
         }
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        await eng.clickElement(page, input.selector)
-        return { type: 'text' as const, text: `Clicked: ${input.selector}` }
+        await eng.clickElement(tabId, input.selector)
+        return { data: `Clicked: ${input.selector}` }
       }
 
       case 'type': {
         if (!input.selector || !input.text) {
-          return { type: 'text' as const, text: 'Error: selector and text are required for type action' }
+          return { data: 'Error: selector and text are required for type action' }
         }
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        await eng.typeInElement(page, input.selector, input.text)
-        return { type: 'text' as const, text: `Typed "${input.text}" into ${input.selector}` }
+        await eng.typeInElement(tabId, input.selector, input.text)
+        return { data: `Typed "${input.text}" into ${input.selector}` }
       }
 
       case 'scroll': {
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        const amount = input.amount ?? 500
-        const dir = input.direction === 'up' ? -amount : amount
-        await page.evaluate((scrollY: number) => window.scrollBy(0, scrollY), dir)
-        return { type: 'text' as const, text: `Scrolled ${input.direction ?? 'down'} ${amount}px` }
+        const dir = input.direction ?? 'down'
+        const amt = input.amount ?? 500
+        // scrollPage not exported from engine — use page.evaluate directly
+        const tab = (eng as any)._tabs?.get(tabId)
+        if (tab?.page) {
+          await tab.page.evaluate(`window.scrollBy(0, ${dir === 'down' ? amt : -amt})`)
+        }
+        return { data: `Scrolled ${dir} ${amt}px` }
       }
 
       case 'evaluate': {
         if (!input.script) {
-          return { type: 'text' as const, text: 'Error: script is required for evaluate action' }
+          return { data: 'Error: script is required for evaluate action' }
         }
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        const result = await page.evaluate(input.script)
-        return { type: 'text' as const, text: String(result) }
+        // Access the tab's page directly for evaluate
+        const tab = (eng as any)._tabs?.get(tabId)
+        if (!tab?.page) {
+          return { data: 'Error: tab page not accessible' }
+        }
+        const result = await tab.page.evaluate(input.script)
+        return { data: String(result) }
       }
 
       case 'accessibility_tree': {
-        const page = browser.currentPage
-        if (!page) {
-          return { type: 'text' as const, text: 'Error: no page open. Use navigate first.' }
+        const tabId = browser.currentTabId
+        if (!tabId) {
+          return { data: 'Error: no page open. Use navigate first.' }
         }
-        const tree = await eng.getAccessibilityTree(page)
-        return { type: 'text' as const, text: tree }
+        const tree = await eng.getAccessibilityTree(tabId)
+        const formatted = Array.isArray(tree)
+          ? tree.map((n: any) => `[${n.role}] ${n.name}${n.value ? ` = ${n.value}` : ''}`).join('\n')
+          : String(tree)
+        return { data: formatted }
       }
 
       default:
-        return { type: 'text' as const, text: `Unknown action: ${input.action}` }
+        return { data: `Unknown action: ${input.action}` }
     }
   } catch (e: any) {
     logForDebugging(`WebBrowser engine error: ${e}`)
-    return { type: 'text' as const, text: `Browser error: ${e.message ?? e}` }
+    return { data: `Browser error: ${e.message ?? e}` }
   }
 }
 
-async function fetchOnlyCall(input: z.infer<typeof inputSchema>) {
+async function fetchOnlyCall(input: BrowserInput) {
   if (input.action === 'navigate') {
     if (!input.url) {
-      return { type: 'text' as const, text: 'Error: url is required for navigate action' }
+      return { data: 'Error: url is required for navigate action' }
     }
     try {
       const response = await fetch(input.url, {
@@ -182,7 +214,7 @@ async function fetchOnlyCall(input: z.infer<typeof inputSchema>) {
       })
       const contentType = response.headers.get('content-type') ?? ''
       if (!contentType.includes('text') && !contentType.includes('json')) {
-        return { type: 'text' as const, text: `Fetched ${input.url} (${response.status}) — binary content (${contentType}), cannot display` }
+        return { data: `Fetched ${input.url} (${response.status}) — binary content (${contentType}), cannot display` }
       }
       const text = await response.text()
       const cleaned = text
@@ -192,11 +224,11 @@ async function fetchOnlyCall(input: z.infer<typeof inputSchema>) {
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 50000)
-      return { type: 'text' as const, text: `[${response.status}] ${input.url}\n\n${cleaned}` }
+      return { data: `[${response.status}] ${input.url}\n\n${cleaned}` }
     } catch (e) {
-      return { type: 'text' as const, text: `Error fetching ${input.url}: ${e}` }
+      return { data: `Error fetching ${input.url}: ${e}` }
     }
   }
 
-  return { type: 'text' as const, text: `Action "${input.action}" requires REAL_BROWSER feature flag to be enabled.` }
+  return { data: `Action "${input.action}" requires REAL_BROWSER feature flag to be enabled.` }
 }

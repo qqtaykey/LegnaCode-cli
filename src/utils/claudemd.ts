@@ -82,6 +82,9 @@ import { getInitialSettings } from './settings/settings.js'
 const teamMemPaths = feature('TEAMMEM')
   ? (require('../memdir/teamMemPaths.js') as typeof import('../memdir/teamMemPaths.js'))
   : null
+const discoveryInit = feature('CONFIG_DISCOVERY')
+  ? (require('../services/discovery/init.js') as typeof import('../services/discovery/init.js'))
+  : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 let hasLoggedInitialLoad = false
@@ -819,6 +822,28 @@ export const getMemoryFiles = memoize(
         conditionalRule: false,
       })),
     )
+
+    // Process discovered rules from other AI tools (lowest priority — loaded
+    // before user/project rules so they never override user-configured content).
+    // Gated by CONFIG_DISCOVERY feature flag; best-effort, never blocks startup.
+    if (feature('CONFIG_DISCOVERY') && discoveryInit) {
+      try {
+        const discoveredRules = await discoveryInit.discoverRules(getOriginalCwd())
+        for (const rule of discoveredRules) {
+          const syntheticPath = `discovered:${rule.source}`
+          const normalizedPath = normalizePathForComparison(syntheticPath)
+          if (processedPaths.has(normalizedPath)) continue
+          processedPaths.add(normalizedPath)
+          result.push({
+            path: syntheticPath,
+            type: 'Project',
+            content: rule.content,
+          })
+        }
+      } catch {
+        // Discovery is best-effort — silently skip on failure
+      }
+    }
 
     // Process User file (only if userSettings is enabled)
     if (isSettingSourceEnabled('userSettings')) {

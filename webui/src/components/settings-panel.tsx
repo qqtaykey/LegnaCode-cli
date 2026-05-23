@@ -107,6 +107,31 @@ export function SettingsPanel({ scope, targetFile, onClose, onSave }: Props) {
 
   const setValue = (field: SettingField, value: any) => {
     const path = field.nested || field.key
+
+    // When apiFormat changes, clear provider-specific fields that don't belong to the new format
+    if (field.key === 'apiFormat') {
+      setData(prev => {
+        let updated = setNestedValue(prev, path, value)
+        const newFormat = String(value)
+
+        // Clear all PROVIDER_FIELDS whose showWhen does NOT include the new format
+        for (const pf of PROVIDER_FIELDS) {
+          if (!pf.showWhen?.includes(newFormat)) {
+            const pfPath = pf.nested || pf.key
+            updated = setNestedValue(updated, pfPath, '')
+          }
+        }
+
+        // Clear kiroGateway when switching away from anthropic
+        if (newFormat !== 'anthropic' && newFormat !== '') {
+          updated = setNestedValue(updated, 'kiroGateway', false)
+        }
+
+        return updated
+      })
+      return
+    }
+
     setData(prev => setNestedValue(prev, path, value))
   }
 
