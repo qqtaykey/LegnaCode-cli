@@ -15,16 +15,16 @@ All notable changes to LegnaCode CLI will be documented in this file.
 
 ### Feature Flags
 
-所有新功能通过编译时 feature flag 控制（默认关闭，Hashline 除外）：
+所有新功能通过编译时 feature flag 控制（默认开启）：
 
 ```
 HASHLINE_EDIT = true
-MULTI_PROVIDER = false
-NATIVE_GREP = false
-NATIVE_SHELL = false
-REAL_BROWSER = false
-PYTHON_KERNEL = false
-CONFIG_DISCOVERY = false
+MULTI_PROVIDER = true
+NATIVE_GREP = true
+NATIVE_SHELL = true
+REAL_BROWSER = true
+PYTHON_KERNEL = true
+CONFIG_DISCOVERY = true
 ```
 
 ## [2.1.3] - 2026-05-23
