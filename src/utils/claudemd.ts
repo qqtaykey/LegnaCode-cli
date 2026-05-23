@@ -2,8 +2,8 @@
  * Files are loaded in the following order:
  *
  * 1. Managed memory (eg. /etc/claude-code/LEGNA.md) - Global instructions for all users
- * 2. User memory (~/.claude/LEGNA.md) - Private global instructions for all projects
- * 3. Project memory (LEGNA.md, .claude/LEGNA.md, and .claude/rules/*.md in project roots) - Instructions checked into the codebase
+ * 2. User memory (~/.legna/LEGNA.md) - Private global instructions for all projects
+ * 3. Project memory (LEGNA.md, .legna/LEGNA.md, and .legna/rules/*.md in project roots) - Instructions checked into the codebase
  * 4. Local memory (LEGNA.local.md in project roots) - Private project-specific instructions
  *
  * Files are loaded in reverse order of priority, i.e. the latest files are highest priority
@@ -13,7 +13,7 @@
  * - User memory is loaded from the user's home directory
  * - Project and Local files are discovered by traversing from the current directory up to root
  * - Files closer to the current directory have higher priority (loaded later)
- * - LEGNA.md, .claude/LEGNA.md, and all .md files in .claude/rules/ are checked in each directory for Project memory
+ * - LEGNA.md, .legna/LEGNA.md, and all .md files in .legna/rules/ are checked in each directory for Project memory
  *
  * Memory @include directive:
  * - Memory files can include other files using @ notation
@@ -685,9 +685,7 @@ export async function processMemoryFile(
 }
 
 /**
- * Processes all .md files in the .claude/rules/ directory and its subdirectories
- * @param rulesDir The path to the rules directory
- * @param type Type of memory file (User, Project, Local)
+ * Processes all .md files in the .legna/rules/ directory and its subdirectories
  * @param processedPaths Set of already processed file paths
  * @param includeExternal Whether to include external files
  * @param conditionalRule If true, only include files with frontmatter paths; if false, only include files without frontmatter paths
@@ -810,7 +808,7 @@ export const getMemoryFiles = memoize(
         includeExternal,
       )),
     )
-    // Process Managed .claude/rules/*.md files
+    // Process Managed .legna/rules/*.md files
     const managedClaudeRulesDir = getManagedClaudeRulesDir()
     result.push(
       ...(await processMdRules({
@@ -833,7 +831,7 @@ export const getMemoryFiles = memoize(
           true, // User memory can always include external files
         )),
       )
-      // Process User ~/.claude/rules/*.md files
+      // Process User ~/.legna/rules/*.md files
       const userClaudeRulesDir = getUserClaudeRulesDir()
       result.push(
         ...(await processMdRules({
@@ -857,9 +855,9 @@ export const getMemoryFiles = memoize(
     }
 
     // When running from a git worktree nested inside its main repo (e.g.,
-    // .claude/worktrees/<name>/ from `claude -w`), the upward walk passes
+    // .legna/worktrees/<name>/ from `claude -w`), the upward walk passes
     // through both the worktree root and the main repo root. Both contain
-    // checked-in files like LEGNA.md and .claude/rules/*.md, so the same
+    // checked-in files like LEGNA.md and .legna/rules/*.md, so the same
     // content gets loaded twice. Skip Project-type (checked-in) files from
     // directories above the worktree but within the main repo — the worktree
     // already has its own checkout. LEGNA.local.md is gitignored so it only
@@ -1246,7 +1244,7 @@ export async function getManagedAndUserConditionalRules(
 ): Promise<MemoryFileInfo[]> {
   const result: MemoryFileInfo[] = []
 
-  // Process Managed conditional .claude/rules/*.md files
+  // Process Managed conditional .legna/rules/*.md files
   const managedClaudeRulesDir = getManagedClaudeRulesDir()
   result.push(
     ...(await processConditionedMdRules(
@@ -1259,7 +1257,7 @@ export async function getManagedAndUserConditionalRules(
   )
 
   if (isSettingSourceEnabled('userSettings')) {
-    // Process User conditional .claude/rules/*.md files
+    // Process User conditional .legna/rules/*.md files
     const userClaudeRulesDir = getUserClaudeRulesDir()
     result.push(
       ...(await processConditionedMdRules(
@@ -1291,7 +1289,7 @@ export async function getMemoryFilesForNestedDirectory(
 ): Promise<MemoryFileInfo[]> {
   const result: MemoryFileInfo[] = []
 
-  // Process project memory files (LEGNA.md and .claude/LEGNA.md)
+  // Process project memory files (LEGNA.md and .legna/LEGNA.md)
   if (isSettingSourceEnabled('projectSettings')) {
     const projectPath = join(dir, 'LEGNA.md')
     result.push(
@@ -1422,8 +1420,7 @@ export async function getConditionalRulesForCwdLevelDirectory(
 }
 
 /**
- * Processes all .md files in the .claude/rules/ directory and its subdirectories,
- * filtering to only include files with frontmatter paths that match the target path
+ * Processes all .md files in the .legna/rules/ directory and its subdirectories,
  * @param targetPath The file path to match against frontmatter glob patterns
  * @param rulesDir The path to the rules directory
  * @param type Type of memory file (User, Project, Local)
@@ -1452,11 +1449,11 @@ export async function processConditionedMdRules(
       return false
     }
 
-    // For Project rules: glob patterns are relative to the directory containing .claude
+    // For Project rules: glob patterns are relative to the directory containing .legna
     // For Managed/User rules: glob patterns are relative to the original CWD
     const baseDir =
       type === 'Project'
-        ? dirname(dirname(rulesDir)) // Parent of .claude
+        ? dirname(dirname(rulesDir)) // Parent of .legna
         : getOriginalCwd() // Project root for managed/user rules
 
     const relativePath = isAbsolute(targetPath)
@@ -1510,7 +1507,7 @@ export async function shouldShowClaudeMdExternalIncludesWarning(): Promise<boole
 }
 
 /**
- * Check if a file path is a memory file (LEGNA.md, LEGNA.local.md, or .claude/rules/*.md)
+ * Check if a file path is a memory file (LEGNA.md, LEGNA.local.md, or .legna/rules/*.md)
  */
 export function isMemoryFilePath(filePath: string): boolean {
   const name = basename(filePath)
@@ -1520,7 +1517,7 @@ export function isMemoryFilePath(filePath: string): boolean {
     return true
   }
 
-  // .md files in .claude/rules/ directories
+  // .md files in .legna/rules/ directories
   if (
     name.endsWith('.md') &&
     filePath.includes(`${sep}.claude${sep}rules${sep}`)

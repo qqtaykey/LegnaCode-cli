@@ -59,9 +59,9 @@ export type SettingsSyncUploadResult = {
  * Keys used for sync entries
  */
 export const SYNC_KEYS = {
-  USER_SETTINGS: '~/.claude/settings.json',
-  USER_MEMORY: '~/.claude/LEGNA.md',
+  USER_SETTINGS: '~/.legna/settings.json',
+  USER_MEMORY: '~/.legna/LEGNA.md',
   projectSettings: (projectId: string) =>
-    `projects/${projectId}/.claude/settings.local.json`,
+    `projects/${projectId}/.legna/settings.local.json`,
   projectMemory: (projectId: string) => `projects/${projectId}/LEGNA.local.md`,
 } as const

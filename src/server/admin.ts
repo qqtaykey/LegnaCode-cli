@@ -1081,10 +1081,10 @@ function handleProjectRestore(id: string): Response {
   const localLegna = join(projectPath, '.legna')
   const restored: string[] = []
 
-  // Restore sessions back to ~/.claude/projects/
+  // Restore sessions back to ~/.legna/projects/
   const localSessions = join(localLegna, 'sessions')
   if (existsSync(localSessions)) {
-    const dstDir = join(home, '.claude', 'projects', id)
+    const dstDir = join(home, '.legna', 'projects', id)
     mkdirSync(dstDir, { recursive: true })
     for (const f of readdirSync(localSessions).filter(f => f.endsWith('.jsonl'))) {
       const dstFile = join(dstDir, f)

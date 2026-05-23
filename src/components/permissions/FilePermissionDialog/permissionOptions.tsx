@@ -33,10 +33,12 @@ export function isInClaudeFolder(filePath: string): boolean {
  */
 export function isInGlobalClaudeFolder(filePath: string): boolean {
   const absolutePath = expandPath(filePath);
+  const globalLegnaFolderPath = join(homedir(), '.legna');
   const globalClaudeFolderPath = join(homedir(), '.claude');
   const normalizedAbsolutePath = normalizeCaseForComparison(absolutePath);
+  const normalizedGlobalLegnaFolderPath = normalizeCaseForComparison(globalLegnaFolderPath);
   const normalizedGlobalClaudeFolderPath = normalizeCaseForComparison(globalClaudeFolderPath);
-  return normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + sep.toLowerCase()) || normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + '/');
+  return normalizedAbsolutePath.startsWith(normalizedGlobalLegnaFolderPath + sep.toLowerCase()) || normalizedAbsolutePath.startsWith(normalizedGlobalLegnaFolderPath + '/') || normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + sep.toLowerCase()) || normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + '/');
 }
 export type PermissionOption = {
   type: 'accept-once';
