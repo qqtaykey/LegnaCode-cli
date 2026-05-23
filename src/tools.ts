@@ -141,6 +141,9 @@ const WorkflowTool = feature('WORKFLOW_SCRIPTS')
       return require('./tools/WorkflowTool/WorkflowTool.js').WorkflowTool
     })()
   : null
+const HashlineEditTool = feature('HASHLINE_EDIT')
+  ? require('./tools/HashlineEditTool/HashlineEditTool.js').HashlineEditTool
+  : null
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 import type { ToolPermissionContext } from './Tool.js'
 import { getDenyRuleForTool } from './utils/permissions/permissions.js'
@@ -240,6 +243,7 @@ export function getAllBaseTools(): Tools {
     ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
     ...(process.env.USER_TYPE === 'ant' && REPLTool ? [REPLTool] : []),
     ...(WorkflowTool ? [WorkflowTool] : []),
+    ...(HashlineEditTool ? [HashlineEditTool] : []),
     ...(SleepTool ? [SleepTool] : []),
     ...cronTools,
     ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),

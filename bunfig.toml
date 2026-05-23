@@ -4,7 +4,7 @@
 # Feature flags control dead code elimination via `import { feature } from 'bun:bundle'`
 
 [bundle.define]
-"MACRO.VERSION" = '"2.1.3"'
+"MACRO.VERSION" = '"2.1.4"'
 "MACRO.BUILD_TIME" = '"2026-04-30T00:00:00.000Z"'
 "MACRO.PACKAGE_URL" = '"@legna-lnc/legnacode"'
 "MACRO.NATIVE_PACKAGE_URL" = '""'
@@ -104,3 +104,10 @@ VOICE_MODE = false
 WEB_BROWSER_TOOL = true
 WORKFLOW_SCRIPTS = true
 OML_BUILTIN = true
+HASHLINE_EDIT = true
+MULTI_PROVIDER = false
+NATIVE_GREP = false
+NATIVE_SHELL = false
+REAL_BROWSER = false
+PYTHON_KERNEL = false
+CONFIG_DISCOVERY = false
