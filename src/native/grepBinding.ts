@@ -1,8 +1,9 @@
 /**
- * Native Grep TypeScript binding — wraps Rust grep addon with ripgrep fallback.
+ * Native Grep TypeScript binding — wraps Rust grep addon.
  *
  * Uses grep-regex/grep-searcher/ignore crates (ripgrep's core libraries)
- * when native addon is available. Falls back to spawning `rg` binary otherwise.
+ * for in-process parallel file search. No fallback — if the native addon
+ * is not compiled, this module throws at call time.
  */
 
 import {
@@ -40,11 +41,14 @@ export interface GrepSearchResult {
 
 /**
  * Native grep search — uses Rust ripgrep libraries in-process.
- * Returns null if native addon is unavailable (caller should fallback to rg binary).
+ * Throws if native addon is not available.
  */
-export function nativeGrepSearch(options: GrepSearchOptions): GrepSearchResult | null {
+export function nativeGrepSearch(options: GrepSearchOptions): GrepSearchResult {
   if (!hasNativeGrep || !grepAddon) {
-    return null // Caller should fallback to ripgrep binary
+    throw new Error(
+      'Native grep addon not available. Run `cd native && cargo build --release` to compile, ' +
+      'or disable NATIVE_GREP feature flag in bunfig.toml.'
+    )
   }
 
   const nativeOpts: NativeGrepOptions = {

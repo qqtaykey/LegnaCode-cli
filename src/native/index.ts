@@ -149,11 +149,11 @@ export interface NativeShellResult {
   stdout: string
   stderr: string
   duration_ms: number
-  truncated: boolean
+  timed_out: boolean
 }
 
 interface ShellAddon {
-  createSession(cwd: string): number
+  createSession(cwd: string, env?: Record<string, string> | null): number
   executeInSession(sessionId: number, command: string, timeoutMs?: number): NativeShellResult
   destroySession(sessionId: number): void
   executeOneshot(options: NativeShellOptions): NativeShellResult

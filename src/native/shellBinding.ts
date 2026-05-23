@@ -1,9 +1,9 @@
 /**
- * Native Shell TypeScript binding — wraps Rust brush-shell addon with process fallback.
+ * Native Shell TypeScript binding — wraps Rust brush-shell addon.
  *
- * Uses vendored brush-shell (Rust bash interpreter) for in-process shell execution.
- * Supports persistent sessions and output minimization.
- * Falls back to spawning shell processes when native addon is unavailable.
+ * Uses brush-shell (Rust bash interpreter) for in-process shell execution.
+ * Supports persistent sessions. No fallback — if the native addon
+ * is not compiled, this module throws at call time.
  */
 
 import {
@@ -25,7 +25,7 @@ export interface ShellExecResult {
   stdout: string
   stderr: string
   durationMs: number
-  truncated: boolean
+  timedOut: boolean
 }
 
 // Session management for persistent shell instances
@@ -33,29 +33,40 @@ const _sessions = new Map<string, number>()
 
 /**
  * Create a persistent shell session.
- * Returns a session ID that can be used with executeInSession.
+ * Throws if native shell addon is not available.
  */
-export function createShellSession(id: string, cwd: string): boolean {
-  if (!hasNativeShell || !shellAddon) return false
+export function createShellSession(id: string, cwd: string, env?: Record<string, string>): void {
+  if (!hasNativeShell || !shellAddon) {
+    throw new Error(
+      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
+      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
+    )
+  }
 
-  const sessionId = shellAddon.createSession(cwd)
+  const sessionId = shellAddon.createSession(cwd, env ?? null)
   _sessions.set(id, sessionId)
-  return true
 }
 
 /**
  * Execute a command in a persistent shell session.
- * Returns null if native shell is unavailable or session doesn't exist.
+ * Throws if native shell is unavailable or session doesn't exist.
  */
 export function executeInSession(
   sessionId: string,
   command: string,
   timeoutMs?: number,
-): ShellExecResult | null {
-  if (!hasNativeShell || !shellAddon) return null
+): ShellExecResult {
+  if (!hasNativeShell || !shellAddon) {
+    throw new Error(
+      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
+      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
+    )
+  }
 
   const nativeId = _sessions.get(sessionId)
-  if (nativeId === undefined) return null
+  if (nativeId === undefined) {
+    throw new Error(`Shell session "${sessionId}" not found. Call createShellSession first.`)
+  }
 
   const result: NativeShellResult = shellAddon.executeInSession(nativeId, command, timeoutMs)
   return {
@@ -63,7 +74,7 @@ export function executeInSession(
     stdout: result.stdout,
     stderr: result.stderr,
     durationMs: result.duration_ms,
-    truncated: result.truncated,
+    timedOut: result.timed_out,
   }
 }
 
@@ -82,10 +93,15 @@ export function destroyShellSession(id: string): void {
 
 /**
  * Execute a one-shot command (no persistent session).
- * Returns null if native shell is unavailable.
+ * Throws if native shell is unavailable.
  */
-export function nativeShellExec(options: ShellExecOptions): ShellExecResult | null {
-  if (!hasNativeShell || !shellAddon) return null
+export function nativeShellExec(options: ShellExecOptions): ShellExecResult {
+  if (!hasNativeShell || !shellAddon) {
+    throw new Error(
+      'Native shell addon not available. Run `cd native && cargo build --release` to compile, ' +
+      'or disable NATIVE_SHELL feature flag in bunfig.toml.'
+    )
+  }
 
   const nativeOpts: NativeShellOptions = {
     command: options.command,
@@ -100,7 +116,7 @@ export function nativeShellExec(options: ShellExecOptions): ShellExecResult | nu
     stdout: result.stdout,
     stderr: result.stderr,
     durationMs: result.duration_ms,
-    truncated: result.truncated,
+    timedOut: result.timed_out,
   }
 }
 
