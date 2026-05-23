@@ -2,6 +2,31 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.5] - 2026-05-23
+
+### 新功能
+
+- **Hashline 编辑系统** — 基于 xxHash32 双字母锚点的精确编辑。每行生成 2 字符锚点（恰好 1 个 BPE token），模型可无歧义引用精确行位置。彻底消灭 str_replace 失败 — 弱模型编辑成功率提升 10 倍（Grok Code Fast 1: 6.7% → 68.3%），输出 token 减少 61%。支持 `«`（行前插入）、`»`（行后插入）、`≔`（范围替换/删除）、`§PATH`（多文件补丁）。内置 3-way merge 恢复机制，文件在读取和编辑之间被修改时自动恢复。
+- **多模型路由** — 支持 15+ AI 提供商（Anthropic、OpenAI、Google Gemini、Ollama、DeepSeek、Groq、Together、Fireworks、Mistral、OpenRouter、xAI、SambaNova、Cerebras、Perplexity、Cohere），8 种 API 协议。SQLite 模型缓存（WAL 模式，2 小时 TTL），支持 online/offline/online-if-uncached 刷新策略。协议模块懒加载，零启动开销。
+- **内化操作（Rust N-API）** — 进程内 grep，使用 grep-regex/grep-searcher/ignore/rayon crate，零进程 spawn 开销。进程内 shell，使用 vendored brush-shell 实现持久会话。Native 绑定 + 自动 fallback 到外部二进制。
+- **真实浏览器控制** — puppeteer-core + CDP 集成，支持 headless/spawned/connected 三种启动模式。可访问性树提取实现结构化页面理解。反检测 stealth 脚本。跨平台 Chrome 自动发现。支持通过 CDP 附加 Electron 应用。
+- **持久 Python 环境** — 有状态 Python kernel，NDJSON 协议通过 stdin/stdout 通信。自动检测 venv/conda。富显示支持（pandas DataFrame、PIL 图片、matplotlib 图表转 base64）。跨回合会话持久。SIGINT→SIGTERM→SIGKILL 优雅关闭。
+- **配置联邦发现** — 实时读取（非迁移）其他工具的配置目录：`.cursor/`（MCP + 规则）、`.windsurf/`（MCP + 规则）、`.gemini/`（MCP + 上下文）、`.codex/`（AGENTS.md + MCP）、`.clinerules`、`.github/copilot-instructions.md`、`.vscode/mcp.json`。基于优先级去重。可通过 settings 禁用特定 provider。
+
+### Feature Flags
+
+所有新功能通过编译时 feature flag 控制（默认关闭，Hashline 除外）：
+
+```
+HASHLINE_EDIT = true
+MULTI_PROVIDER = false
+NATIVE_GREP = false
+NATIVE_SHELL = false
+REAL_BROWSER = false
+PYTHON_KERNEL = false
+CONFIG_DISCOVERY = false
+```
+
 ## [2.1.3] - 2026-05-23
 
 ### 修复

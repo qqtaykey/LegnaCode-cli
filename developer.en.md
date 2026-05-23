@@ -267,6 +267,13 @@ if (feature('VOICE_MODE')) {
 | `TOKEN_BUDGET` | Token budget management |
 | `ULTRAPLAN` / `ULTRATHINK` | Advanced planning/thinking modes |
 | `TEMPLATES` | Template system (new/list/reply) |
+| `HASHLINE_EDIT` | Hashline edit system (hash-anchored precision editing) |
+| `MULTI_PROVIDER` | Multi-model routing (15+ providers, 8 protocols) |
+| `NATIVE_GREP` | In-process grep via Rust N-API |
+| `NATIVE_SHELL` | In-process shell via Rust N-API (brush-shell) |
+| `REAL_BROWSER` | Real browser control (puppeteer-core + CDP) |
+| `PYTHON_KERNEL` | Persistent Python environment (stateful kernel) |
+| `CONFIG_DISCOVERY` | Config federation discovery (Cursor/Windsurf/Gemini/Codex/Cline/Copilot) |
 
 Flags can be overridden at build time via CLI: `bun run scripts/build.ts --features FLAG1,FLAG2`
 
@@ -1058,4 +1065,238 @@ cd extensions/legna-office/webview-ui && npm install && npm run dev
 
 # Package VSIX
 cd extensions/legna-office && npx @vscode/vsce package
+```
+
+---
+
+## Hashline Edit System
+
+**Flag:** `HASHLINE_EDIT` | **Path:** `src/tools/HashlineEditTool/`
+
+Hash-anchored precision editing that eliminates str_replace ambiguity failures.
+
+### How It Works
+
+```
+Read file → xxHash32(lineIndex, lineContent) % 647 → 2-char bigram anchor
+Model sees: "42sr|function hi() {"
+Model edits: "≔42sr..45ab" + replacement content
+Apply: validate anchor hashes → match = apply, mismatch = reject
+```
+
+### Key Modules
+
+| File | Purpose |
+|------|---------|
+| `hash.ts` | xxHash32 via `Bun.hash`, 647 bigrams table, `computeLineHash()` |
+| `parser.ts` | Parse `«`/`»`/`≔` operations into `HashlineEdit[]` |
+| `apply.ts` | Bottom-up application (higher lines first for index stability) |
+| `anchors.ts` | `HashlineMismatchError` with context display |
+| `input.ts` | Split multi-file patches by `§PATH` headers |
+| `recovery.ts` | 3-way merge when file changed between read and edit |
+| `fileReadCache.ts` | LRU cache (30 paths) of what model last saw |
+| `execute.ts` | Orchestrator: split → parse → apply → write |
+| `HashlineEditTool.ts` | Tool registration via `buildTool()` |
+
+### Operations
+
+- `«HASH` — Insert before the anchored line
+- `»HASH` — Insert after the anchored line
+- `≔HASH` — Replace single line
+- `≔HASH1..HASH2` — Replace range (inclusive)
+- `§PATH` — File header for multi-file patches
+
+---
+
+## Multi-Model Routing
+
+**Flag:** `MULTI_PROVIDER` | **Path:** `src/services/modelManager.ts`, `src/utils/model/protocols/`
+
+### Architecture
+
+```
+User request → ModelManager.resolveProviderModels(strategy)
+                    │
+                    ├─ online: fetch from provider API + cache in SQLite
+                    ├─ offline: read from SQLite cache only
+                    └─ online-if-uncached: fetch only if no cache entry
+                    │
+                    ▼
+              Protocol Registry → lazy-load protocol module
+                    │
+                    ├─ anthropic-messages (existing)
+                    ├─ openai-completions (OpenAI, DeepSeek, Groq, etc.)
+                    ├─ google-generative-ai (Gemini)
+                    ├─ ollama-chat (local models)
+                    └─ ... (8 protocols total)
+```
+
+### Model Cache
+
+- Storage: `~/.legna/models.db` (SQLite, WAL mode)
+- Schema: `provider_id`, `version`, `updated_at`, `models` (JSON), `static_fingerprint`
+- TTL: 2 hours
+- API: `getCachedModels()`, `setCachedModels()`, `invalidateCache()`
+
+### Adding a New Provider
+
+1. Add entry to `BUILTIN_PROVIDERS` in `src/services/modelManager.ts`
+2. Specify `protocol`, `baseUrl`, `envKey`, and optionally `modelsEndpoint`
+3. The protocol module handles streaming — no per-provider code needed
+
+---
+
+## Internalized Operations (Rust N-API)
+
+**Flags:** `NATIVE_GREP`, `NATIVE_SHELL` | **Path:** `native/grep/`, `native/shell/`, `src/native/`
+
+### Native Grep
+
+```
+native/grep/
+├── Cargo.toml          # grep-regex, grep-searcher, ignore, rayon
+└── src/lib.rs          # N-API exports: search()
+```
+
+TypeScript binding: `src/native/grepBinding.ts`
+- Automatic fallback to `rg` binary if native addon unavailable
+- Parallel file traversal via rayon
+- Respects `.gitignore`
+- Three output modes: content, files_with_matches, count
+
+### Native Shell
+
+```
+native/shell/
+├── Cargo.toml          # brush-core, brush-builtins (vendored)
+└── src/lib.rs          # N-API exports: create/execute/destroy session
+```
+
+TypeScript binding: `src/native/shellBinding.ts`
+- Persistent sessions (state preserved across commands)
+- `createSession()` / `executeInSession()` / `destroySession()` / `executeOneshot()`
+- Fallback to `execa` subprocess when native unavailable
+
+### Build
+
+```bash
+cd native && cargo build --release
+# Cross-compile targets defined in native/build.sh
+```
+
+---
+
+## Real Browser Control
+
+**Flag:** `REAL_BROWSER` | **Path:** `src/tools/WebBrowserTool/engine/`
+
+### Launch Modes
+
+| Mode | Description |
+|------|-------------|
+| `headless` | Launch new Chrome in headless mode (default) |
+| `spawned` | Launch visible Chrome window |
+| `connected` | Attach to existing Chrome via CDP URL |
+
+### Key Functions
+
+- `launchBrowser(options)` — Start/connect browser with stealth scripts
+- `openTab(browser, url)` — Open new tab with navigation
+- `getAccessibilityTree(page)` — Structured page understanding
+- `screenshotTab(page)` — Capture viewport as base64
+- `clickElement(page, selector)` / `typeInElement(page, selector, text)`
+- `closeBrowser(browser)` — Graceful shutdown
+
+### Chrome Discovery
+
+Auto-discovers Chrome/Chromium across platforms:
+- macOS: `/Applications/Google Chrome.app/...`
+- Linux: `google-chrome`, `chromium-browser`, `chromium`
+- Windows: `Program Files/.../chrome.exe`
+
+### Stealth
+
+14 anti-detection scripts injected via `evaluateOnNewDocument` before page creation.
+
+---
+
+## Persistent Python Environment
+
+**Flag:** `PYTHON_KERNEL` | **Path:** `src/tools/REPLTool/python/`
+
+### Architecture
+
+```
+REPLTool
+  │
+  ├─ runtime.ts    — Python resolver (venv > conda > system)
+  ├─ kernel.ts     — Subprocess lifecycle management
+  └─ runner.py     — Self-contained NDJSON REPL (no external deps)
+```
+
+### Protocol (NDJSON over stdin/stdout)
+
+Request: `{"type": "execute", "id": "uuid", "code": "..."}\n`
+Response: `{"type": "result", "id": "uuid", "stdout": "...", "stderr": "...", "result": "...", "display": [...]}\n`
+
+### Kernel Lifecycle
+
+1. `startKernel(sessionId)` — Spawn python3 with runner.py, 10s startup timeout
+2. `executeCode(sessionId, code)` — Send execute request, await result
+3. `stopKernel(sessionId)` — SIGINT → SIGTERM(5s) → SIGKILL
+
+### Rich Display
+
+- pandas DataFrames → formatted table string
+- PIL Images → base64 PNG
+- matplotlib plots → base64 PNG (auto `plt.savefig`)
+
+---
+
+## Config Federation Discovery
+
+**Flag:** `CONFIG_DISCOVERY` | **Path:** `src/services/discovery/`
+
+### Design Principle
+
+Live read (not migration) — every session reads from other tools' directories without copying or modifying source files.
+
+### Provider Registry
+
+| Provider | Priority | Sources |
+|----------|----------|---------|
+| `claude` | 80 | `~/.claude/`, `.claude/` |
+| `codex` | 70 | `.codex/AGENTS.md`, `.codex/mcp.json` |
+| `gemini` | 60 | `.gemini/settings.json` → mcpServers |
+| `cursor` | 50 | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
+| `windsurf` | 50 | `.windsurf/mcp_config.json`, `.windsurf/rules/*.md` |
+| `cline` | 40 | `.clinerules` (file or directory) |
+| `github` | 30 | `.github/copilot-instructions.md` |
+| `vscode` | 20 | `.vscode/mcp.json` |
+
+### API
+
+```typescript
+import { loadCapability } from './services/discovery/index.js'
+
+// Load all MCP servers from all providers
+const mcpItems = await loadCapability('mcps', cwd)
+
+// Load all rules
+const ruleItems = await loadCapability('rules', cwd)
+```
+
+### Deduplication
+
+Items are deduplicated by key (MCP server name, rule name). Higher priority providers win on conflict. Each item carries `_source: { provider, file, priority }` for traceability.
+
+### Disabling Providers
+
+```json
+// settings.json
+{
+  "discovery": {
+    "disabledProviders": ["cursor", "windsurf"]
+  }
+}
 ```

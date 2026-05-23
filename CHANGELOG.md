@@ -4,6 +4,31 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.5] - 2026-05-23
+
+### Features
+
+- **Hashline Edit System** — Hash-anchored precision editing using xxHash32 bigram anchors. Each line gets a 2-char anchor (exactly 1 BPE token), enabling models to reference exact line positions without ambiguity. Eliminates str_replace failures — edit success rate improves 10x on weaker models (Grok Code Fast 1: 6.7% → 68.3%). Output tokens reduced 61%. Supports `«` (insert before), `»` (insert after), `≔` (replace/delete range), `§PATH` (multi-file patches). Includes 3-way merge recovery when files change between read and edit.
+- **Multi-Model Routing** — Support for 15+ AI providers (Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere) with 8 API protocols. SQLite model cache (WAL mode, 2h TTL) with online/offline/online-if-uncached refresh strategies. Lazy-loaded protocol modules for zero startup overhead.
+- **Internalized Operations (Rust N-API)** — In-process grep using grep-regex/grep-searcher/ignore/rayon crates — zero process spawn overhead. In-process shell via vendored brush-shell with persistent sessions. Native bindings with automatic fallback to external binaries when native addon unavailable.
+- **Real Browser Control** — puppeteer-core + CDP integration with headless/spawned/connected launch modes. Accessibility tree extraction for structured page understanding. Stealth scripts for anti-detection. Chrome auto-discovery across platforms. Supports Electron app attachment via CDP.
+- **Persistent Python Environment** — Stateful Python kernel with NDJSON protocol over stdin/stdout. venv/conda auto-detection. Rich display support (pandas DataFrames, PIL images, matplotlib plots as base64). Session persistence across turns. SIGINT→SIGTERM→SIGKILL graceful shutdown.
+- **Config Federation Discovery** — Live read (not migration) from other tools' config directories: `.cursor/` (MCP + rules), `.windsurf/` (MCP + rules), `.gemini/` (MCP + context), `.codex/` (AGENTS.md + MCP), `.clinerules`, `.github/copilot-instructions.md`, `.vscode/mcp.json`. Priority-based deduplication. Disable specific providers via settings.
+
+### Feature Flags
+
+All new features are gated behind build-time feature flags (default off except Hashline):
+
+```
+HASHLINE_EDIT = true
+MULTI_PROVIDER = false
+NATIVE_GREP = false
+NATIVE_SHELL = false
+REAL_BROWSER = false
+PYTHON_KERNEL = false
+CONFIG_DISCOVERY = false
+```
+
 ## [2.1.3] - 2026-05-23
 
 ### Fixes

@@ -4,7 +4,7 @@
 
 **An AI-powered terminal programming assistant, supercharged.**
 
-[![version](https://img.shields.io/badge/version-2.1.3-blue)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-2.1.5-blue)](./CHANGELOG.md)
 [![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
@@ -34,6 +34,7 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **2.1.5** | Hashline edit system (hash-anchored precision editing); multi-model routing (15+ providers, 8 protocols); internalized Rust N-API ops (grep/shell); real browser control (puppeteer+CDP); persistent Python kernel; config federation discovery |
 | **2.1.3** | Remove GrowthBook dependency from /loop cron gate; fix OpenAI stream bridge silently swallowing empty responses |
 | **2.1.2** | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
 | **2.1.1** | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
