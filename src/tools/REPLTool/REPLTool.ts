@@ -5,7 +5,7 @@
 import { z } from 'zod'
 import { buildTool } from '../../Tool.js'
 import { startKernel, executeCode, stopKernel, isKernelRunning } from './python/kernel.js'
-import { getCwd } from '../../utils/state.js'
+import { getCwd } from '../../utils/cwd.js'
 
 const REPL_TOOL_NAME = 'REPLTool'
 
