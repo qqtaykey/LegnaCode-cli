@@ -4,30 +4,34 @@
  */
 
 import { isAbsolute } from 'path'
-import type { ToolUseContext } from '../../Tool.js'
-import { buildTool, type ToolDef } from '../../Tool.js'
+import { buildTool } from '../../Tool.js'
 import { getCwd } from '../../utils/cwd.js'
 import { expandPath } from '../../utils/path.js'
 import { checkWritePermissionForTool } from '../../utils/permissions/filesystem.js'
-import type { PermissionDecision } from '../../utils/permissions/PermissionResult.js'
 import { HASHLINE_EDIT_TOOL_NAME } from './constants.js'
 import { executeHashlineEdit } from './execute.js'
 import { hashlineEditPrompt } from './prompt.js'
 import { hashlineEditParamsSchema, type HashlineParams } from './types.js'
 
-export const HashlineEditTool: ToolDef<typeof hashlineEditParamsSchema> = buildTool({
+export const HashlineEditTool = buildTool({
   name: HASHLINE_EDIT_TOOL_NAME,
-  description: hashlineEditPrompt,
+  maxResultSizeChars: 100_000,
+  renderToolUseMessage(_input: any, _progress: any) {
+    return null
+  },
+  async description() {
+    return 'A tool for editing files using hash-anchored line references'
+  },
+  async prompt() {
+    return hashlineEditPrompt
+  },
   inputSchema: hashlineEditParamsSchema,
-  async call(
-    input: HashlineParams,
-    context: ToolUseContext,
-  ): Promise<{ text: string }> {
+  async call(input: HashlineParams, _ctx: any, _canUse: any, _parent: any, _progress?: any) {
     const cwd = getCwd()
     const result = await executeHashlineEdit(input.input, cwd, input.path)
 
     if (!result.success) {
-      return { text: `Error: ${result.message}` }
+      return { data: `Error: ${result.message}` }
     }
 
     const parts: string[] = []
@@ -37,7 +41,14 @@ export const HashlineEditTool: ToolDef<typeof hashlineEditParamsSchema> = buildT
     }
     if (result.diff) parts.push(result.diff)
 
-    return { text: parts.join('\n\n') }
+    return { data: parts.join('\n\n') }
+  },
+  mapToolResultToToolResultBlockParam(output: string, toolUseID: string) {
+    return {
+      tool_use_id: toolUseID,
+      type: 'tool_result' as const,
+      content: output || 'Edit applied successfully.',
+    }
   },
   isReadOnly() {
     return false
@@ -45,16 +56,18 @@ export const HashlineEditTool: ToolDef<typeof hashlineEditParamsSchema> = buildT
   userFacingName() {
     return 'Hashline Edit'
   },
-  async checkPermission(
-    input: HashlineParams,
-    context: ToolUseContext,
-  ): Promise<PermissionDecision> {
-    // Extract file paths from input to check write permissions
+  async checkPermissions(input: HashlineParams, context: any): Promise<any> {
+    const appState = context.getAppState()
     const cwd = getCwd()
     const pathToCheck = input.path
       ? (isAbsolute(input.path) ? input.path : expandPath(input.path, cwd))
       : cwd
 
-    return checkWritePermissionForTool(pathToCheck, context)
+    return checkWritePermissionForTool(
+      HashlineEditTool as any,
+      input,
+      appState.toolPermissionContext,
+      [pathToCheck],
+    )
   },
 })

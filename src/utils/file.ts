@@ -12,6 +12,7 @@ import {
   resolve,
   sep,
 } from 'path'
+import { feature } from 'bun:bundle'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
 import { getCwd } from '../utils/cwd.js'
@@ -286,6 +287,8 @@ export function isCompactLinePrefixEnabled(): boolean {
 
 /**
  * Adds cat -n style line numbers to the content.
+ * When HASHLINE_EDIT is enabled, outputs hash-anchored format (e.g., `42sr|text`)
+ * so the model can use HashlineEdit for precise edits.
  */
 export function addLineNumbers({
   content,
@@ -300,6 +303,14 @@ export function addLineNumbers({
   }
 
   const lines = content.split(/\r?\n/)
+
+  // When HashlineEdit is available, output hash-anchored lines
+  if (feature('HASHLINE_EDIT')) {
+    const { formatHashLine } = require('../tools/HashlineEditTool/hash.js') as typeof import('../tools/HashlineEditTool/hash.js')
+    return lines
+      .map((line, index) => formatHashLine(index + startLine, line))
+      .join('\n')
+  }
 
   if (isCompactLinePrefixEnabled()) {
     return lines
@@ -319,10 +330,14 @@ export function addLineNumbers({
 }
 
 /**
- * Inverse of addLineNumbers — strips the `N→` or `N\t` prefix from a single
+ * Inverse of addLineNumbers — strips the `N→`, `N\t`, or `NHash|` prefix from a single
  * line. Co-located so format changes here and in addLineNumbers stay in sync.
  */
 export function stripLineNumberPrefix(line: string): string {
+  // Hash-anchored format: `42sr|text` (digits + 2 lowercase letters + pipe)
+  const hashMatch = line.match(/^\d+[a-z]{2}\|(.*)$/)
+  if (hashMatch) return hashMatch[1]!
+  // Classic formats: `  42→text` or `42\ttext`
   const match = line.match(/^\s*\d+[\u2192\t](.*)$/)
   return match?.[1] ?? line
 }

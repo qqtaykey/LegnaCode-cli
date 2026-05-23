@@ -59,6 +59,7 @@ import { TICK_TAG } from './xml.js'
 import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
 import { isUndercover } from '../utils/undercover.js'
+import { getAntModelOverrideConfig } from '../utils/model/antModels.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
@@ -290,7 +291,7 @@ function getUsingYourToolsSection(enabledTools: Set<string>): string {
 
   const providedToolSubitems = [
     `To read files use ${FILE_READ_TOOL_NAME} instead of cat, head, tail, or sed`,
-    `To edit files use ${FILE_EDIT_TOOL_NAME} instead of sed or awk`,
+    `To edit files use ${FILE_EDIT_TOOL_NAME} instead of sed or awk. For large multi-line edits or when hash anchors are available, prefer HashlineEdit — it's faster and more precise.`,
     `To create files use ${FILE_WRITE_TOOL_NAME} instead of cat with heredoc or echo redirection`,
     ...(embedded
       ? []
@@ -298,6 +299,9 @@ function getUsingYourToolsSection(enabledTools: Set<string>): string {
           `To search for files use ${GLOB_TOOL_NAME} instead of find or ls`,
           `To search the content of files, use ${GREP_TOOL_NAME} instead of grep or rg`,
         ]),
+    `When the user asks to browse a webpage, interact with a website, take a screenshot of a page, or test a web UI, use the WebBrowser tool (navigate/click/type/screenshot/evaluate). Do NOT use Bash with curl for interactive web tasks.`,
+    `When the user asks to generate images, videos, music, speech, or do web search via MiniMax, use the corresponding MiniMax tool (MiniMaxImageGenerate, MiniMaxVideoGenerate, MiniMaxMusicGenerate, MiniMaxSpeechSynthesize, MiniMaxWebSearch). These require MINIMAX_API_KEY.`,
+    `When the user asks to run Python code, use data analysis, or execute scripts interactively, use the REPL tool instead of running python via Bash.`,
     `Reserve using the ${BASH_TOOL_NAME} exclusively for system commands and terminal operations that require shell execution. If you are unsure and there is a relevant dedicated tool, default to using the dedicated tool and only fallback on using the ${BASH_TOOL_NAME} tool for these if it is absolutely necessary.`,
   ]
 
