@@ -2,6 +2,12 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.9] - 2026-05-25
+
+### 修复
+
+- **Computer Use "Finder 未安装"** — `installed_apps()` 只扫描 4 个目录，遗漏了位于 `/System/Library/CoreServices/` 的 Finder.app。新增该搜索路径，并将当前正在运行的 app 合并到已安装列表作为兜底——任何非标准路径的 app 只要在运行就能被识别。
+
 ## [2.1.8] - 2026-05-25
 
 ### 修复

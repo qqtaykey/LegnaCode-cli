@@ -4,6 +4,12 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.9] - 2026-05-25
+
+### Fixes
+
+- **Computer Use "Finder not installed"** — `installed_apps()` only scanned 4 directories, missing Finder.app in `/System/Library/CoreServices/`. Added that path to search roots AND merged currently running apps into the installed list as a fallback — any app in a non-standard location is now discoverable as long as it's running.
+
 ## [2.1.8] - 2026-05-25
 
 ### Fixes
