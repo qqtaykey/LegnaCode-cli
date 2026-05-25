@@ -4,7 +4,7 @@
 
 **An AI-powered terminal programming assistant, supercharged.**
 
-[![version](https://img.shields.io/badge/version-2.1.7-blue)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-2.1.8-blue)](./CHANGELOG.md)
 [![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
@@ -37,39 +37,55 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **2.1.8** | Fix Computer Use screenshot permission loop (Swift→Python bridge); fix agent stalling after file reads (read-then-act directive) |
 | **2.1.7** | Wire all 6 custom features; config federation discovery startup integration; fix all MiniMax/REPL/WebBrowser tool types; WebUI preset switching clears stale fields; declare all feature flags |
 | **2.1.6** | Hashline Edit integration (hash-anchored Read output); fix HashlineEditTool type errors; fix missing import in prompts.ts; system prompt guidance for tool routing |
 | **2.1.5** | Multi-provider routing (28 providers, 9 protocols); Hashline edit system; persistent shell + output minimizer; real browser control; persistent Python kernel; config federation discovery; Admin WebUI expanded (21 presets) |
-| **2.1.3** | Remove GrowthBook dependency from /loop cron gate; fix OpenAI stream bridge silently swallowing empty responses |
-| **2.1.2** | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
-| **2.1.1** | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
-| **2.1.0** | Platform-aware publish (Mac→darwin+linux, Win→win32); DeepSeek reasoning_content multi-turn 400 fix; ShellProgressMessage crash fix |
-| **2.0.5** | LegnaCode Office pixel visualization (conversation sidebar, status bubble, WebSocket, join-key auth, layout persistence, notification sounds, demo mode, i18n); DeepSeek reasoning_content passback fix |
-| **2.0.4** | OpenAI Responses API bridge (Codex providers); admin config hot-reload + UI auto-refresh; getGlobalSettings dead code fix |
-| **2.0.3** | Kiro Gateway optimization; admin profile inline editing; model allowlist removed; count_tokens disabled; sandbox removed |
-| **1.9.9** | Bash exit code 65 彻底修复；Admin 预设配置模板；ANTHROPIC_MODEL 字段 |
-| **1.9.5** | Admin preset profile templates (7 providers); ANTHROPIC_MODEL field; migration auto-fill |
-| **1.9.4** | macOS Seatbelt sandbox rewrite (allow-by-default); Shell.ts sandbox return path fix |
-| **1.9.3** | OpenAI-compatible API routing; deep adapter alignment for all 7 CN providers; admin profile clone; Bash sandbox fix |
-| **1.9.2** | Computer Use Python bridge (macOS + Windows); auto Python 3.12+ venv setup; feature gate removal for Computer Use |
-| **1.9.0** | Portable sessions (relative cwd); WebUI overhaul (project browser, memory editor, force-directed graph); full project migration (sessions + subagents + memory + skills + agents + rules + MCP config); profile switching via pointer file |
-| **1.8.5** | Token optimization: compress tool prompts (BashTool/AgentTool/TodoWrite/EnterPlanMode); fix cache_control for Kimi/MiniMax/MiMo adapters |
 
 <details>
-<summary>1.8.x patches</summary>
+<summary>2.1.x patches</summary>
 
 | Version | Summary |
 |---------|---------|
-| 1.8.4 | Fix `isVirtual in m` crash — null guards for session transcript processing |
-| 1.8.3 | GitHub Actions CI release workflow; OML agent type fix; cross-platform Rust native addon builds |
-| 1.8.2 | Null-guard fixes for message pipeline crashes; Rust native addons (sandbox/file-search/apply-patch) for darwin-arm64 |
+| 2.1.3 | Remove GrowthBook dependency from /loop cron gate; fix OpenAI stream bridge silently swallowing empty responses |
+| 2.1.2 | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
+| 2.1.1 | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
+| 2.1.0 | Platform-aware publish (Mac→darwin+linux, Win→win32); DeepSeek reasoning_content multi-turn 400 fix; ShellProgressMessage crash fix |
 
 </details>
 
-| **1.8.0** | Codex full compat: plugin adapter + marketplace, skills discovery, config interop; TS/Python SDK; TTS + WebRTC voice |
+<details>
+<summary>2.0.x</summary>
+
+| Version | Summary |
+|---------|---------|
+| 2.0.5 | LegnaCode Office pixel visualization (conversation sidebar, status bubble, WebSocket, join-key auth, layout persistence, notification sounds, demo mode, i18n); DeepSeek reasoning_content passback fix |
+| 2.0.4 | OpenAI Responses API bridge (Codex providers); admin config hot-reload + UI auto-refresh; getGlobalSettings dead code fix |
+| 2.0.3 | Kiro Gateway optimization; admin profile inline editing; model allowlist removed; count_tokens disabled; sandbox removed |
+
+</details>
 
 <details>
-<summary>Older versions</summary>
+<summary>1.8.x – 1.9.x</summary>
+
+| Version | Summary |
+|---------|---------|
+| 1.9.9 | Bash exit code 65 彻底修复；Admin 预设配置模板；ANTHROPIC_MODEL 字段 |
+| 1.9.5 | Admin preset profile templates (7 providers); ANTHROPIC_MODEL field; migration auto-fill |
+| 1.9.4 | macOS Seatbelt sandbox rewrite (allow-by-default); Shell.ts sandbox return path fix |
+| 1.9.3 | OpenAI-compatible API routing; deep adapter alignment for all 7 CN providers; admin profile clone; Bash sandbox fix |
+| 1.9.2 | Computer Use Python bridge (macOS + Windows); auto Python 3.12+ venv setup; feature gate removal for Computer Use |
+| 1.9.0 | Portable sessions (relative cwd); WebUI overhaul (project browser, memory editor, force-directed graph); full project migration; profile switching via pointer file |
+| 1.8.5 | Token optimization: compress tool prompts (BashTool/AgentTool/TodoWrite/EnterPlanMode); fix cache_control for Kimi/MiniMax/MiMo adapters |
+| 1.8.4 | Fix `isVirtual in m` crash — null guards for session transcript processing |
+| 1.8.3 | GitHub Actions CI release workflow; OML agent type fix; cross-platform Rust native addon builds |
+| 1.8.2 | Null-guard fixes for message pipeline crashes; Rust native addons (sandbox/file-search/apply-patch) for darwin-arm64 |
+| 1.8.0 | Codex full compat: plugin adapter + marketplace, skills discovery, config interop; TS/Python SDK; TTS + WebRTC voice |
+
+</details>
+
+<details>
+<summary>1.0.x – 1.6.x</summary>
 
 | Version | Summary |
 |---------|---------|

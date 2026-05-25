@@ -2,6 +2,13 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.8] - 2026-05-25
+
+### 修复
+
+- **Computer Use 截屏权限死循环** — macOS 通过 Swift 子进程（`swift -e` + `CGPreflightScreenCaptureAccess()`）检查屏幕录制权限时，由于 TCC 权限绑定的是父应用 bundle 而非 spawn 的子进程，始终返回 `false`。改用 Python bridge 的 `check_permissions`（含 window-title fallback 探测）。`null`（未知/不可靠）现视为不阻塞——让实际截屏操作作为最终判定。
+- **Agent 读完文件后停滞** — 系统提示词新增"读完即行动"指令。此前模型读完文件后会停下来（end_turn）等用户说话才继续。现在明确要求读完后立即进入编辑/执行，不做总结、不等确认。
+
 ## [2.1.7] - 2026-05-24
 
 ### 新功能

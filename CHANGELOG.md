@@ -4,6 +4,13 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.8] - 2026-05-25
+
+### Fixes
+
+- **Computer Use Screenshot Permission Loop** — macOS Screen Recording permission check via Swift subprocess (`swift -e` + `CGPreflightScreenCaptureAccess()`) always returned `false` for child processes because TCC binds to the parent app bundle, not spawned subprocesses. Replaced with Python bridge `check_permissions` which uses a window-title fallback probe. `null` (unknown/unreliable) is now treated as non-blocking — the actual capture attempt is the final source of truth.
+- **Agent Stalling After File Reads** — Added explicit "read-then-act" directive to system prompt. The model would read files then stop (end_turn) waiting for user input instead of proceeding to edit. Now instructed to proceed immediately after reading — no summary, no confirmation pause.
+
 ## [2.1.7] - 2026-05-24
 
 ### Features
