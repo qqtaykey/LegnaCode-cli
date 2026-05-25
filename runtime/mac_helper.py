@@ -353,6 +353,7 @@ def installed_apps() -> list[dict[str, Any]]:
         Path.home() / "Applications",
         Path("/System/Applications"),
         Path("/System/Applications/Utilities"),
+        Path("/System/Library/CoreServices"),
     ]
     results: dict[str, dict[str, Any]] = {}
     workspace = NSWorkspace.sharedWorkspace()
@@ -388,6 +389,23 @@ def installed_apps() -> list[dict[str, Any]]:
                 "displayName": str(display_name),
                 "path": str(app),
             }
+
+    # Also include currently running apps — covers apps in non-standard
+    # locations (e.g. Finder in /System/Library/CoreServices) that the
+    # directory scan may miss.
+    for app in workspace.runningApplications() or []:
+        bundle_id = app.bundleIdentifier()
+        if not bundle_id or bundle_id in results:
+            continue
+        name = app.localizedName() or bundle_id
+        url = app.bundleURL()
+        path = str(url.path()) if url else ""
+        results[bundle_id] = {
+            "bundleId": str(bundle_id),
+            "displayName": str(name),
+            "path": path,
+        }
+
     return sorted(results.values(), key=lambda item: item["displayName"].lower())
 
 
