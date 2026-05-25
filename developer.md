@@ -267,6 +267,13 @@ if (feature('VOICE_MODE')) {
 | `TOKEN_BUDGET` | Token 预算管理 |
 | `ULTRAPLAN` / `ULTRATHINK` | 高级规划/思考模式 |
 | `TEMPLATES` | 模板系统 (new/list/reply) |
+| `HASHLINE_EDIT` | Hashline 编辑系统（哈希锚点精确编辑） |
+| `MULTI_PROVIDER` | 多模型路由（15+ 提供商，8 种协议） |
+| `PERSISTENT_SHELL` | 持久 Shell 会话（复用子进程，避免重复 spawn） |
+| `OUTPUT_MINIMIZER` | 输出最小化器（压缩 git/npm/cargo 冗长输出） |
+| `REAL_BROWSER` | 真实浏览器控制（puppeteer-core + CDP） |
+| `PYTHON_KERNEL` | 持久 Python 环境（有状态 kernel） |
+| `CONFIG_DISCOVERY` | 配置联邦发现（Cursor/Windsurf/Gemini/Codex/Cline/Copilot） |
 
 构建时可通过 CLI 覆盖：`bun run scripts/build.ts --features FLAG1,FLAG2`
 
@@ -1058,4 +1065,249 @@ cd extensions/legna-office/webview-ui && npm install && npm run dev
 
 # 打包 VSIX
 cd extensions/legna-office && npx @vscode/vsce package
+```
+
+---
+
+## Hashline 编辑系统
+
+**Flag:** `HASHLINE_EDIT` | **路径:** `src/tools/HashlineEditTool/`
+
+基于哈希锚点的精确编辑，消灭 str_replace 歧义失败。
+
+### 工作原理
+
+```
+读取文件 → xxHash32(lineIndex, lineContent) % 647 → 2 字符 bigram 锚点
+模型看到: "42sr|function hi() {"
+模型编辑: "≔42sr..45ab" + 替换内容
+应用时: 验证锚点哈希 → 匹配则应用，不匹配则拒绝
+```
+
+### 核心模块
+
+| 文件 | 职责 |
+|------|------|
+| `hash.ts` | xxHash32 via `Bun.hash`，647 bigrams 表，`computeLineHash()` |
+| `parser.ts` | 解析 `«`/`»`/`≔` 操作为 `HashlineEdit[]` |
+| `apply.ts` | 自底向上应用（高行号优先，保持索引稳定） |
+| `anchors.ts` | `HashlineMismatchError` + 上下文显示 |
+| `input.ts` | 按 `§PATH` 头分割多文件补丁 |
+| `recovery.ts` | 文件在读取和编辑之间被修改时的 3-way merge 恢复 |
+| `fileReadCache.ts` | LRU 缓存（30 路径）记录模型上次看到的内容 |
+| `execute.ts` | 编排器：split → parse → apply → write |
+| `HashlineEditTool.ts` | 通过 `buildTool()` 注册工具 |
+
+### 操作符
+
+- `«HASH` — 在锚定行之前插入
+- `»HASH` — 在锚定行之后插入
+- `≔HASH` — 替换单行
+- `≔HASH1..HASH2` — 替换范围（含两端）
+- `§PATH` — 多文件补丁的文件头
+
+---
+
+## 多模型路由
+
+**Flag:** `MULTI_PROVIDER` | **路径:** `src/services/modelManager.ts`, `src/utils/model/protocols/`
+
+### 架构
+
+```
+用户请求 → ModelManager.resolveProviderModels(strategy)
+                    │
+                    ├─ online: 从提供商 API 拉取 + 缓存到 SQLite
+                    ├─ offline: 仅读取 SQLite 缓存
+                    └─ online-if-uncached: 无缓存时才拉取
+                    │
+                    ▼
+              协议注册表 → 懒加载协议模块
+                    │
+                    ├─ anthropic-messages（原生）
+                    ├─ openai-completions（OpenAI、DeepSeek、Groq、xAI 等）
+                    ├─ openai-responses（OpenAI Responses API）
+                    ├─ google-generative-ai（Gemini）
+                    ├─ google-vertex（Vertex AI，OAuth）
+                    ├─ azure-openai（Azure，api-key + api-version）
+                    ├─ bedrock-converse（AWS Bedrock，SigV4 + event-stream）
+                    ├─ ollama-chat（本地模型）
+                    └─ cursor-agent（预留）
+```
+
+### 协议实现
+
+| 文件 | 协议 | 说明 |
+|------|------|------|
+| `protocols/openai.ts` | `openai-completions` | SSE 流式，兼容 20+ 提供商 |
+| `protocols/openai-responses.ts` | `openai-responses` | OpenAI 新 Responses API，event-based |
+| `protocols/google.ts` | `google-generative-ai` | Gemini SSE，API key 认证 |
+| `protocols/vertex.ts` | `google-vertex` | Vertex AI，OAuth Bearer token |
+| `protocols/azure-openai.ts` | `azure-openai` | Azure URL 模式 + api-key header |
+| `protocols/bedrock.ts` | `bedrock-converse` | AWS event-stream 格式 |
+| `protocols/ollama.ts` | `ollama-chat` | 本地 Ollama，OpenAI 兼容 |
+| `protocols/index.ts` | 注册表 | `ensureProtocolsRegistered()` 懒加载 |
+
+### 提供商（28 个）
+
+Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere, Azure OpenAI, AWS Bedrock, Google Vertex, Novita, Hyperbolic, Lepton, Nebius, DeepInfra, Anyscale, Replicate, Moonshot/Kimi, Zhipu/GLM, MiniMax, Qwen, Yi, Baichuan
+
+### 模型缓存
+
+- 存储: `~/.legna/models.db`（SQLite，WAL 模式）
+- Schema: `provider_id`, `version`, `updated_at`, `models` (JSON), `static_fingerprint`
+- TTL: 2 小时
+- API: `getCachedModels()`, `setCachedModels()`, `invalidateCache()`
+
+### 添加新提供商
+
+1. 在 `src/services/modelManager.ts` 的 `BUILTIN_PROVIDERS` 中添加条目
+2. 指定 `protocol`、`baseUrl`、`envKey`，可选 `modelsEndpoint`
+3. 协议模块处理流式传输 — 无需编写 per-provider 代码
+
+---
+
+## 增强操作（纯 TS）
+
+**Flags:** `PERSISTENT_SHELL`, `OUTPUT_MINIMIZER` | **路径:** `src/utils/persistentShell.ts`, `src/utils/outputMinimizer.ts`, `src/utils/grepCache.ts`
+
+### Grep 缓存
+
+`src/utils/grepCache.ts`
+- LRU 缓存（50 条目，5s TTL）
+- 同路径 + 同 pattern 复用结果
+- 文件编辑后自动失效
+
+### 持久 Shell
+
+`src/utils/persistentShell.ts`
+- 复用 shell 子进程，避免重复 spawn（~5-15ms/次）
+- 会话池（最多 4 个），按 session ID 隔离
+- 空闲 60s 自动回收
+- SIGINT 中断当前命令但不杀 shell
+- 绑定层: `src/native/shellBinding.ts`（纯 TS，接口兼容）
+
+### 输出最小化器
+
+`src/utils/outputMinimizer.ts`
+- 规则引擎: npm/pip/cargo/git/docker/bun 等工具
+- 超过 15 行的冗长输出自动压缩为摘要
+- 仅在命令成功（exit 0）时生效
+- 可通过 `OUTPUT_MINIMIZER` flag 关闭
+
+---
+
+## 真实浏览器控制
+
+**Flag:** `REAL_BROWSER` | **路径:** `src/tools/WebBrowserTool/engine/`
+
+### 启动模式
+
+| 模式 | 说明 |
+|------|------|
+| `headless` | 以 headless 模式启动新 Chrome（默认） |
+| `spawned` | 启动可见 Chrome 窗口 |
+| `connected` | 通过 CDP URL 附加到已有 Chrome |
+
+### 核心函数
+
+- `launchBrowser(options)` — 启动/连接浏览器，注入 stealth 脚本
+- `openTab(browser, url)` — 打开新标签页并导航
+- `getAccessibilityTree(page)` — 结构化页面理解
+- `screenshotTab(page)` — 捕获视口为 base64
+- `clickElement(page, selector)` / `typeInElement(page, selector, text)`
+- `closeBrowser(browser)` — 优雅关闭
+
+### Chrome 发现
+
+跨平台自动发现 Chrome/Chromium：
+- macOS: `/Applications/Google Chrome.app/...`
+- Linux: `google-chrome`, `chromium-browser`, `chromium`
+- Windows: `Program Files/.../chrome.exe`
+
+### Stealth
+
+14 个反检测脚本通过 `evaluateOnNewDocument` 在页面创建前注入。
+
+---
+
+## 持久 Python 环境
+
+**Flag:** `PYTHON_KERNEL` | **路径:** `src/tools/REPLTool/python/`
+
+### 架构
+
+```
+REPLTool
+  │
+  ├─ runtime.ts    — Python 解析器（venv > conda > 系统）
+  ├─ kernel.ts     — 子进程生命周期管理
+  └─ runner.py     — 自包含 NDJSON REPL（无外部依赖）
+```
+
+### 协议（NDJSON over stdin/stdout）
+
+请求: `{"type": "execute", "id": "uuid", "code": "..."}\n`
+响应: `{"type": "result", "id": "uuid", "stdout": "...", "stderr": "...", "result": "...", "display": [...]}\n`
+
+### Kernel 生命周期
+
+1. `startKernel(sessionId)` — 启动 python3 + runner.py，10s 启动超时
+2. `executeCode(sessionId, code)` — 发送执行请求，等待结果
+3. `stopKernel(sessionId)` — SIGINT → SIGTERM(5s) → SIGKILL
+
+### 富显示
+
+- pandas DataFrame → 格式化表格字符串
+- PIL Image → base64 PNG
+- matplotlib 图表 → base64 PNG（自动 `plt.savefig`）
+
+---
+
+## 配置联邦发现
+
+**Flag:** `CONFIG_DISCOVERY` | **路径:** `src/services/discovery/`
+
+### 设计原则
+
+实时读取（非迁移）— 每次会话从其他工具目录读取配置，不复制不修改源文件。
+
+### Provider 注册表
+
+| Provider | 优先级 | 来源 |
+|----------|--------|------|
+| `claude` | 80 | `~/.claude/`, `.claude/` |
+| `codex` | 70 | `.codex/AGENTS.md`, `.codex/mcp.json` |
+| `gemini` | 60 | `.gemini/settings.json` → mcpServers |
+| `cursor` | 50 | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
+| `windsurf` | 50 | `.windsurf/mcp_config.json`, `.windsurf/rules/*.md` |
+| `cline` | 40 | `.clinerules`（文件或目录） |
+| `github` | 30 | `.github/copilot-instructions.md` |
+| `vscode` | 20 | `.vscode/mcp.json` |
+
+### API
+
+```typescript
+import { loadCapability } from './services/discovery/index.js'
+
+// 从所有 provider 加载 MCP 服务器
+const mcpItems = await loadCapability('mcps', cwd)
+
+// 加载所有规则
+const ruleItems = await loadCapability('rules', cwd)
+```
+
+### 去重
+
+按 key（MCP 服务器名、规则名）去重。优先级高的 provider 在冲突时胜出。每个 item 携带 `_source: { provider, file, priority }` 用于溯源。
+
+### 禁用 Provider
+
+```json
+// settings.json
+{
+  "discovery": {
+    "disabledProviders": ["cursor", "windsurf"]
+  }
+}
 ```

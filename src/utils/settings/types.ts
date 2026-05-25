@@ -211,7 +211,7 @@ export const DeniedMcpServerEntrySchema = lazySchema(() =>
  *
  * ⚠️ BACKWARD COMPATIBILITY NOTICE ⚠️
  *
- * This schema defines the structure of user settings files (.claude/settings.json).
+ * This schema defines the structure of user settings files (.legna/settings.json).
  * We support backward-compatible changes! Here's how:
  *
  * ✅ ALLOWED CHANGES:
@@ -541,7 +541,7 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'When set in managed settings, blocks non-plugin customization sources for the listed surfaces. ' +
             'Array form locks specific surfaces (e.g. ["skills", "hooks"]); `true` locks all four; `false` is an explicit no-op. ' +
-            'Blocked: ~/.claude/{surface}/, .claude/{surface}/ (project), settings.json hooks, .mcp.json. ' +
+            'Blocked: ~/.legna/{surface}/, .legna/{surface}/ (project), settings.json hooks, .mcp.json. ' +
             'NOT blocked: managed (policySettings) sources, plugin-provided customizations. ' +
             'Composes with strictKnownMarketplaces for end-to-end admin control — plugins gated by ' +
             'marketplace allowlist, everything else blocked here.',

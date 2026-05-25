@@ -5,12 +5,13 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, pollVideoTask, getFileD
 import { MINIMAX_VIDEO_TOOL_NAME, MINIMAX_VIDEO_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     prompt: z.string().describe('Video generation prompt'),
     first_frame_image: z.string().optional().describe('URL of first frame image (optional, for image-to-video)'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type Output = {
   result: string
@@ -22,8 +23,10 @@ type Output = {
 export const MiniMaxVideoGenerateTool = buildTool({
   name: MINIMAX_VIDEO_TOOL_NAME,
   searchHint: 'generate create video clip animation',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_VIDEO_DESCRIPTION },
   userFacingName: () => 'MiniMax Video',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -42,7 +45,7 @@ export const MiniMaxVideoGenerateTool = buildTool({
   renderToolUseMessage(input) {
     return renderMiniMaxToolUse('Generating video', input.prompt)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -75,4 +78,4 @@ export const MiniMaxVideoGenerateTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)

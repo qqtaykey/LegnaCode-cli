@@ -267,6 +267,13 @@ if (feature('VOICE_MODE')) {
 | `TOKEN_BUDGET` | Token budget management |
 | `ULTRAPLAN` / `ULTRATHINK` | Advanced planning/thinking modes |
 | `TEMPLATES` | Template system (new/list/reply) |
+| `HASHLINE_EDIT` | Hashline edit system (hash-anchored precision editing) |
+| `MULTI_PROVIDER` | Multi-model routing (15+ providers, 8 protocols) |
+| `PERSISTENT_SHELL` | Persistent shell sessions (reuse child process, avoid repeated spawn) |
+| `OUTPUT_MINIMIZER` | Output minimizer (compress verbose git/npm/cargo output) |
+| `REAL_BROWSER` | Real browser control (puppeteer-core + CDP) |
+| `PYTHON_KERNEL` | Persistent Python environment (stateful kernel) |
+| `CONFIG_DISCOVERY` | Config federation discovery (Cursor/Windsurf/Gemini/Codex/Cline/Copilot) |
 
 Flags can be overridden at build time via CLI: `bun run scripts/build.ts --features FLAG1,FLAG2`
 
@@ -1058,4 +1065,249 @@ cd extensions/legna-office/webview-ui && npm install && npm run dev
 
 # Package VSIX
 cd extensions/legna-office && npx @vscode/vsce package
+```
+
+---
+
+## Hashline Edit System
+
+**Flag:** `HASHLINE_EDIT` | **Path:** `src/tools/HashlineEditTool/`
+
+Hash-anchored precision editing that eliminates str_replace ambiguity failures.
+
+### How It Works
+
+```
+Read file → xxHash32(lineIndex, lineContent) % 647 → 2-char bigram anchor
+Model sees: "42sr|function hi() {"
+Model edits: "≔42sr..45ab" + replacement content
+Apply: validate anchor hashes → match = apply, mismatch = reject
+```
+
+### Key Modules
+
+| File | Purpose |
+|------|---------|
+| `hash.ts` | xxHash32 via `Bun.hash`, 647 bigrams table, `computeLineHash()` |
+| `parser.ts` | Parse `«`/`»`/`≔` operations into `HashlineEdit[]` |
+| `apply.ts` | Bottom-up application (higher lines first for index stability) |
+| `anchors.ts` | `HashlineMismatchError` with context display |
+| `input.ts` | Split multi-file patches by `§PATH` headers |
+| `recovery.ts` | 3-way merge when file changed between read and edit |
+| `fileReadCache.ts` | LRU cache (30 paths) of what model last saw |
+| `execute.ts` | Orchestrator: split → parse → apply → write |
+| `HashlineEditTool.ts` | Tool registration via `buildTool()` |
+
+### Operations
+
+- `«HASH` — Insert before the anchored line
+- `»HASH` — Insert after the anchored line
+- `≔HASH` — Replace single line
+- `≔HASH1..HASH2` — Replace range (inclusive)
+- `§PATH` — File header for multi-file patches
+
+---
+
+## Multi-Model Routing
+
+**Flag:** `MULTI_PROVIDER` | **Path:** `src/services/modelManager.ts`, `src/utils/model/protocols/`
+
+### Architecture
+
+```
+User request → ModelManager.resolveProviderModels(strategy)
+                    │
+                    ├─ online: fetch from provider API + cache in SQLite
+                    ├─ offline: read from SQLite cache only
+                    └─ online-if-uncached: fetch only if no cache entry
+                    │
+                    ▼
+              Protocol Registry → lazy-load protocol module
+                    │
+                    ├─ anthropic-messages (native)
+                    ├─ openai-completions (OpenAI, DeepSeek, Groq, xAI, etc.)
+                    ├─ openai-responses (OpenAI Responses API)
+                    ├─ google-generative-ai (Gemini)
+                    ├─ google-vertex (Vertex AI, OAuth)
+                    ├─ azure-openai (Azure, api-key + api-version)
+                    ├─ bedrock-converse (AWS Bedrock, SigV4 + event-stream)
+                    ├─ ollama-chat (local models)
+                    └─ cursor-agent (reserved)
+```
+
+### Protocol Implementations
+
+| File | Protocol | Description |
+|------|----------|-------------|
+| `protocols/openai.ts` | `openai-completions` | SSE streaming, compatible with 20+ providers |
+| `protocols/openai-responses.ts` | `openai-responses` | OpenAI new Responses API, event-based |
+| `protocols/google.ts` | `google-generative-ai` | Gemini SSE, API key auth |
+| `protocols/vertex.ts` | `google-vertex` | Vertex AI, OAuth Bearer token |
+| `protocols/azure-openai.ts` | `azure-openai` | Azure URL pattern + api-key header |
+| `protocols/bedrock.ts` | `bedrock-converse` | AWS event-stream format |
+| `protocols/ollama.ts` | `ollama-chat` | Local Ollama, OpenAI-compatible |
+| `protocols/index.ts` | Registry | `ensureProtocolsRegistered()` lazy-loads all |
+
+### Providers (28)
+
+Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere, Azure OpenAI, AWS Bedrock, Google Vertex, Novita, Hyperbolic, Lepton, Nebius, DeepInfra, Anyscale, Replicate, Moonshot/Kimi, Zhipu/GLM, MiniMax, Qwen, Yi, Baichuan
+
+### Model Cache
+
+- Storage: `~/.legna/models.db` (SQLite, WAL mode)
+- Schema: `provider_id`, `version`, `updated_at`, `models` (JSON), `static_fingerprint`
+- TTL: 2 hours
+- API: `getCachedModels()`, `setCachedModels()`, `invalidateCache()`
+
+### Adding a New Provider
+
+1. Add entry to `BUILTIN_PROVIDERS` in `src/services/modelManager.ts`
+2. Specify `protocol`, `baseUrl`, `envKey`, and optionally `modelsEndpoint`
+3. The protocol module handles streaming — no per-provider code needed
+
+---
+
+## Enhanced Operations (Pure TS)
+
+**Flags:** `PERSISTENT_SHELL`, `OUTPUT_MINIMIZER` | **Path:** `src/utils/persistentShell.ts`, `src/utils/outputMinimizer.ts`, `src/utils/grepCache.ts`
+
+### Grep Cache
+
+`src/utils/grepCache.ts`
+- LRU cache (50 entries, 5s TTL)
+- Reuses results for same path + same pattern
+- Auto-invalidates after file edits
+
+### Persistent Shell
+
+`src/utils/persistentShell.ts`
+- Reuses shell child process, avoids repeated spawn (~5-15ms/cmd)
+- Session pool (max 4), isolated by session ID
+- Auto-reclaim after 60s idle
+- SIGINT interrupts current command without killing shell
+- Binding layer: `src/native/shellBinding.ts` (pure TS, interface-compatible)
+
+### Output Minimizer
+
+`src/utils/outputMinimizer.ts`
+- Rule engine: npm/pip/cargo/git/docker/bun tools
+- Compresses verbose output (>15 lines) into concise summaries
+- Only applies on success (exit 0)
+- Disable via `OUTPUT_MINIMIZER` flag
+
+---
+
+## Real Browser Control
+
+**Flag:** `REAL_BROWSER` | **Path:** `src/tools/WebBrowserTool/engine/`
+
+### Launch Modes
+
+| Mode | Description |
+|------|-------------|
+| `headless` | Launch new Chrome in headless mode (default) |
+| `spawned` | Launch visible Chrome window |
+| `connected` | Attach to existing Chrome via CDP URL |
+
+### Key Functions
+
+- `launchBrowser(options)` — Start/connect browser with stealth scripts
+- `openTab(browser, url)` — Open new tab with navigation
+- `getAccessibilityTree(page)` — Structured page understanding
+- `screenshotTab(page)` — Capture viewport as base64
+- `clickElement(page, selector)` / `typeInElement(page, selector, text)`
+- `closeBrowser(browser)` — Graceful shutdown
+
+### Chrome Discovery
+
+Auto-discovers Chrome/Chromium across platforms:
+- macOS: `/Applications/Google Chrome.app/...`
+- Linux: `google-chrome`, `chromium-browser`, `chromium`
+- Windows: `Program Files/.../chrome.exe`
+
+### Stealth
+
+14 anti-detection scripts injected via `evaluateOnNewDocument` before page creation.
+
+---
+
+## Persistent Python Environment
+
+**Flag:** `PYTHON_KERNEL` | **Path:** `src/tools/REPLTool/python/`
+
+### Architecture
+
+```
+REPLTool
+  │
+  ├─ runtime.ts    — Python resolver (venv > conda > system)
+  ├─ kernel.ts     — Subprocess lifecycle management
+  └─ runner.py     — Self-contained NDJSON REPL (no external deps)
+```
+
+### Protocol (NDJSON over stdin/stdout)
+
+Request: `{"type": "execute", "id": "uuid", "code": "..."}\n`
+Response: `{"type": "result", "id": "uuid", "stdout": "...", "stderr": "...", "result": "...", "display": [...]}\n`
+
+### Kernel Lifecycle
+
+1. `startKernel(sessionId)` — Spawn python3 with runner.py, 10s startup timeout
+2. `executeCode(sessionId, code)` — Send execute request, await result
+3. `stopKernel(sessionId)` — SIGINT → SIGTERM(5s) → SIGKILL
+
+### Rich Display
+
+- pandas DataFrames → formatted table string
+- PIL Images → base64 PNG
+- matplotlib plots → base64 PNG (auto `plt.savefig`)
+
+---
+
+## Config Federation Discovery
+
+**Flag:** `CONFIG_DISCOVERY` | **Path:** `src/services/discovery/`
+
+### Design Principle
+
+Live read (not migration) — every session reads from other tools' directories without copying or modifying source files.
+
+### Provider Registry
+
+| Provider | Priority | Sources |
+|----------|----------|---------|
+| `claude` | 80 | `~/.claude/`, `.claude/` |
+| `codex` | 70 | `.codex/AGENTS.md`, `.codex/mcp.json` |
+| `gemini` | 60 | `.gemini/settings.json` → mcpServers |
+| `cursor` | 50 | `.cursor/mcp.json`, `.cursor/rules/*.mdc` |
+| `windsurf` | 50 | `.windsurf/mcp_config.json`, `.windsurf/rules/*.md` |
+| `cline` | 40 | `.clinerules` (file or directory) |
+| `github` | 30 | `.github/copilot-instructions.md` |
+| `vscode` | 20 | `.vscode/mcp.json` |
+
+### API
+
+```typescript
+import { loadCapability } from './services/discovery/index.js'
+
+// Load all MCP servers from all providers
+const mcpItems = await loadCapability('mcps', cwd)
+
+// Load all rules
+const ruleItems = await loadCapability('rules', cwd)
+```
+
+### Deduplication
+
+Items are deduplicated by key (MCP server name, rule name). Higher priority providers win on conflict. Each item carries `_source: { provider, file, priority }` for traceability.
+
+### Disabling Providers
+
+```json
+// settings.json
+{
+  "discovery": {
+    "disabledProviders": ["cursor", "windsurf"]
+  }
+}
 ```

@@ -1,0 +1,23 @@
+[package]
+name = "legna-shell"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { workspace = true }
+napi-derive = { workspace = true }
+tokio = { version = "1.50", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+anyhow = "1"
+brush-core = "0.5"
+brush-builtins = "0.2"
+brush-parser = "0.4"
+os_pipe = "1"
+lazy_static = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

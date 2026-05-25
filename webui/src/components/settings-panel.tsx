@@ -16,14 +16,21 @@ interface SettingField {
   type: 'text' | 'password' | 'select' | 'toggle' | 'number'
   options?: { value: string; label: string }[]
   nested?: string // dot path like "env.ANTHROPIC_BASE_URL"
+  showWhen?: string[] // only show when apiFormat matches one of these values
 }
 
-const FIELDS: SettingField[] = [
+// Core fields — always visible
+const CORE_FIELDS: SettingField[] = [
   { key: 'apiFormat', label: 'API 路由模式', type: 'select', options: [
     { value: '', label: '自动 (根据 URL 推断)' },
     { value: 'anthropic', label: 'Anthropic Messages API' },
     { value: 'openai', label: 'OpenAI Chat Completions API' },
     { value: 'responses', label: 'OpenAI Responses API (Codex)' },
+    { value: 'azure-openai', label: 'Azure OpenAI' },
+    { value: 'bedrock-converse', label: 'AWS Bedrock Converse' },
+    { value: 'google-generative-ai', label: 'Google Gemini' },
+    { value: 'google-vertex', label: 'Google Vertex AI' },
+    { value: 'ollama-chat', label: 'Ollama (本地)' },
   ]},
   { key: 'env.ANTHROPIC_BASE_URL', label: 'API 端点', type: 'text', nested: 'env.ANTHROPIC_BASE_URL' },
   { key: 'env.ANTHROPIC_AUTH_TOKEN', label: 'API Key', type: 'password', nested: 'env.ANTHROPIC_AUTH_TOKEN' },
@@ -34,6 +41,22 @@ const FIELDS: SettingField[] = [
   { key: 'env.ANTHROPIC_DEFAULT_HAIKU_MODEL', label: 'Haiku 模型映射', type: 'text', nested: 'env.ANTHROPIC_DEFAULT_HAIKU_MODEL' },
   { key: 'env.CLAUDE_CODE_MAX_OUTPUT_TOKENS', label: '最大输出 Tokens', type: 'number', nested: 'env.CLAUDE_CODE_MAX_OUTPUT_TOKENS' },
   { key: 'env.API_TIMEOUT_MS', label: 'API 超时 (ms)', type: 'number', nested: 'env.API_TIMEOUT_MS' },
+]
+
+// Provider-specific fields — shown only when apiFormat matches
+const PROVIDER_FIELDS: SettingField[] = [
+  { key: 'env.AZURE_OPENAI_ENDPOINT', label: 'Azure 端点', type: 'text', nested: 'env.AZURE_OPENAI_ENDPOINT', showWhen: ['azure-openai'] },
+  { key: 'env.AZURE_OPENAI_API_KEY', label: 'Azure API Key', type: 'password', nested: 'env.AZURE_OPENAI_API_KEY', showWhen: ['azure-openai'] },
+  { key: 'env.AWS_REGION', label: 'AWS Region', type: 'text', nested: 'env.AWS_REGION', showWhen: ['bedrock-converse'] },
+  { key: 'env.AWS_ACCESS_KEY_ID', label: 'AWS Access Key', type: 'password', nested: 'env.AWS_ACCESS_KEY_ID', showWhen: ['bedrock-converse'] },
+  { key: 'env.AWS_SECRET_ACCESS_KEY', label: 'AWS Secret Key', type: 'password', nested: 'env.AWS_SECRET_ACCESS_KEY', showWhen: ['bedrock-converse'] },
+  { key: 'env.VERTEX_ENDPOINT', label: 'Vertex AI 端点', type: 'text', nested: 'env.VERTEX_ENDPOINT', showWhen: ['google-vertex'] },
+  { key: 'env.GOOGLE_API_KEY', label: 'Google API Key', type: 'password', nested: 'env.GOOGLE_API_KEY', showWhen: ['google-generative-ai', 'google-vertex'] },
+  { key: 'env.OPENROUTER_API_KEY', label: 'OpenRouter API Key', type: 'password', nested: 'env.OPENROUTER_API_KEY', showWhen: ['openai', 'responses'] },
+]
+
+// Behavior fields — always visible
+const BEHAVIOR_FIELDS: SettingField[] = [
   { key: 'kiroGateway', label: 'Kiro Gateway 优化', type: 'toggle' },
   { key: 'alwaysThinkingEnabled', label: '始终思考', type: 'toggle' },
   { key: 'skipDangerousModePermissionPrompt', label: '跳过危险确认', type: 'toggle' },
@@ -84,6 +107,31 @@ export function SettingsPanel({ scope, targetFile, onClose, onSave }: Props) {
 
   const setValue = (field: SettingField, value: any) => {
     const path = field.nested || field.key
+
+    // When apiFormat changes, clear provider-specific fields that don't belong to the new format
+    if (field.key === 'apiFormat') {
+      setData(prev => {
+        let updated = setNestedValue(prev, path, value)
+        const newFormat = String(value)
+
+        // Clear all PROVIDER_FIELDS whose showWhen does NOT include the new format
+        for (const pf of PROVIDER_FIELDS) {
+          if (!pf.showWhen?.includes(newFormat)) {
+            const pfPath = pf.nested || pf.key
+            updated = setNestedValue(updated, pfPath, '')
+          }
+        }
+
+        // Clear kiroGateway when switching away from anthropic
+        if (newFormat !== 'anthropic' && newFormat !== '') {
+          updated = setNestedValue(updated, 'kiroGateway', false)
+        }
+
+        return updated
+      })
+      return
+    }
+
     setData(prev => setNestedValue(prev, path, value))
   }
 
@@ -108,40 +156,81 @@ export function SettingsPanel({ scope, targetFile, onClose, onSave }: Props) {
 
   if (loading) return <div className="text-gray-500 text-sm">加载中...</div>
 
+  const currentFormat = String(getNestedValue(data, 'apiFormat') ?? '')
+  const visibleProviderFields = PROVIDER_FIELDS.filter(f =>
+    f.showWhen?.includes(currentFormat)
+  )
+
+  const renderField = (field: SettingField) => {
+    if (field.type === 'toggle') {
+      return (
+        <button
+          onClick={() => setValue(field, !getValue(field))}
+          className={`w-10 h-5 rounded-full transition-colors relative ${
+            getValue(field) ? 'bg-blue-600' : 'bg-gray-600'
+          }`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+            getValue(field) ? 'left-5' : 'left-0.5'
+          }`} />
+        </button>
+      )
+    }
+    if (field.type === 'select') {
+      return (
+        <select
+          value={String(getValue(field))}
+          onChange={e => setValue(field, e.target.value)}
+          className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+        >
+          <option value="">--</option>
+          {field.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      )
+    }
+    return (
+      <input
+        type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+        value={String(getValue(field))}
+        onChange={e => setValue(field, field.type === 'number' ? Number(e.target.value) || '' : e.target.value)}
+        className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
+        placeholder={field.label}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4">
-      {FIELDS.map(field => (
+      {CORE_FIELDS.map(field => (
         <div key={field.key} className="flex items-center gap-4">
           <label className="w-40 text-sm text-gray-400 shrink-0">{field.label}</label>
-          {field.type === 'toggle' ? (
-            <button
-              onClick={() => setValue(field, !getValue(field))}
-              className={`w-10 h-5 rounded-full transition-colors relative ${
-                getValue(field) ? 'bg-blue-600' : 'bg-gray-600'
-              }`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                getValue(field) ? 'left-5' : 'left-0.5'
-              }`} />
-            </button>
-          ) : field.type === 'select' ? (
-            <select
-              value={String(getValue(field))}
-              onChange={e => setValue(field, e.target.value)}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
-            >
-              <option value="">--</option>
-              {field.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          ) : (
-            <input
-              type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
-              value={String(getValue(field))}
-              onChange={e => setValue(field, field.type === 'number' ? Number(e.target.value) || '' : e.target.value)}
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-gray-200"
-              placeholder={field.label}
-            />
-          )}
+          {renderField(field)}
+        </div>
+      ))}
+
+      {visibleProviderFields.length > 0 && (
+        <>
+          <div className="border-t border-gray-800 pt-3 mt-3">
+            <span className="text-xs text-gray-500 uppercase tracking-wide">
+              {currentFormat ? CORE_FIELDS[0]!.options!.find(o => o.value === currentFormat)?.label : ''}配置
+            </span>
+          </div>
+          {visibleProviderFields.map(field => (
+            <div key={field.key} className="flex items-center gap-4">
+              <label className="w-40 text-sm text-gray-400 shrink-0">{field.label}</label>
+              {renderField(field)}
+            </div>
+          ))}
+        </>
+      )}
+
+      <div className="border-t border-gray-800 pt-3 mt-3">
+        <span className="text-xs text-gray-500 uppercase tracking-wide">行为设置</span>
+      </div>
+      {BEHAVIOR_FIELDS.map(field => (
+        <div key={field.key} className="flex items-center gap-4">
+          <label className="w-40 text-sm text-gray-400 shrink-0">{field.label}</label>
+          {renderField(field)}
         </div>
       ))}
 

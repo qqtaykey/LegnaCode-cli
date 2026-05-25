@@ -1,6 +1,6 @@
 {
   "name": "@legna-lnc/legnacode",
-  "version": "2.1.2",
+  "version": "2.1.8",
   "description": "LegnaCode — legna.lnc's official CLI for coding assistance",
   "type": "module",
   "bin": {
@@ -98,6 +98,7 @@
     "p-map": "^7.0.0",
     "picomatch": "^4.0.0",
     "proper-lockfile": "^4.1.2",
+    "puppeteer-core": "^25.0.4",
     "qrcode": "^1.5.4",
     "react": "19",
     "react-compiler-runtime": "^1.0.0",
@@ -142,13 +143,13 @@
     "bun": ">=1.2.0"
   },
   "optionalDependencies": {
-    "@legna-lnc/legnacode-darwin-arm64": "2.1.2",
-    "@legna-lnc/legnacode-darwin-x64": "2.1.2",
-    "@legna-lnc/legnacode-darwin-x64-baseline": "2.1.2",
-    "@legna-lnc/legnacode-linux-x64": "2.1.2",
-    "@legna-lnc/legnacode-linux-x64-baseline": "2.1.2",
-    "@legna-lnc/legnacode-linux-arm64": "2.1.2",
-    "@legna-lnc/legnacode-win32-x64": "2.1.2",
-    "@legna-lnc/legnacode-win32-ia32": "2.1.2"
+    "@legna-lnc/legnacode-darwin-arm64": "2.1.8",
+    "@legna-lnc/legnacode-darwin-x64": "2.1.8",
+    "@legna-lnc/legnacode-darwin-x64-baseline": "2.1.8",
+    "@legna-lnc/legnacode-linux-x64": "2.1.8",
+    "@legna-lnc/legnacode-linux-x64-baseline": "2.1.8",
+    "@legna-lnc/legnacode-linux-arm64": "2.1.8",
+    "@legna-lnc/legnacode-win32-x64": "2.1.8",
+    "@legna-lnc/legnacode-win32-ia32": "2.1.8"
   }
 }

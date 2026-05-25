@@ -5,11 +5,12 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, ENDPOINTS } from './cli
 import { MINIMAX_SEARCH_TOOL_NAME, MINIMAX_SEARCH_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     query: z.string().describe('Search query string'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type SearchResult = {
   title: string
@@ -26,8 +27,10 @@ type Output = {
 export const MiniMaxWebSearchTool = buildTool({
   name: MINIMAX_SEARCH_TOOL_NAME,
   searchHint: 'web search query find information online',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_SEARCH_DESCRIPTION },
   userFacingName: () => 'MiniMax Search',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -46,7 +49,7 @@ export const MiniMaxWebSearchTool = buildTool({
   renderToolUseMessage(input) {
     return renderMiniMaxToolUse('Searching web', input.query)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -82,4 +85,4 @@ export const MiniMaxWebSearchTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)

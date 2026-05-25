@@ -1,5 +1,5 @@
 [workspace]
-members = ["sandbox", "file-search", "apply-patch"]
+members = ["sandbox", "file-search", "apply-patch", "grep", "shell"]
 resolver = "2"
 
 [workspace.dependencies]

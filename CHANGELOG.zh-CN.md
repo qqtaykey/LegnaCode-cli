@@ -2,6 +2,76 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.8] - 2026-05-25
+
+### 修复
+
+- **Computer Use 截屏权限死循环** — macOS 通过 Swift 子进程（`swift -e` + `CGPreflightScreenCaptureAccess()`）检查屏幕录制权限时，由于 TCC 权限绑定的是父应用 bundle 而非 spawn 的子进程，始终返回 `false`。改用 Python bridge 的 `check_permissions`（含 window-title fallback 探测）。`null`（未知/不可靠）现视为不阻塞——让实际截屏操作作为最终判定。
+- **Agent 读完文件后停滞** — 系统提示词新增"读完即行动"指令。此前模型读完文件后会停下来（end_turn）等用户说话才继续。现在明确要求读完后立即进入编辑/执行，不做总结、不等确认。
+
+## [2.1.7] - 2026-05-24
+
+### 新功能
+
+- **配置联邦发现接入启动流程** — 7 个 provider（cursor、windsurf、vscode、github、gemini、codex、cline）的发现模块正式接入。发现的 MCP 服务器以最低优先级合并到 `mcp/config.ts`；发现的规则合并到 `claudemd.ts` 记忆文件。`CONFIG_DISCOVERY` flag 控制。非阻塞，try/catch 包裹。
+- **Feature Flags 全部声明** — `CONFIG_DISCOVERY`、`HASHLINE_EDIT`、`MULTI_PROVIDER`、`OML_BUILTIN`、`OUTPUT_MINIMIZER`、`PERSISTENT_SHELL`、`REAL_BROWSER` 补入 `bun-bundle.d.ts` 类型声明。所有 flag 编译时可识别。
+- **WebUI 预设切换清除旧字段** — 切换 `apiFormat` 时自动清除不属于新格式的 provider 字段（如从 Azure 切走时清 Azure keys）。切换到非 Anthropic 格式时重置 `kiroGateway`。
+
+### 修复
+
+- **MiniMax 6 个工具类型错误** — Image、Music、Speech、Video、Vision、WebSearch 全部修复：getter `inputSchema`、3 参数 `renderToolResultMessage`、`async description()`、正确的 `satisfies ToolDef<InputSchema, Output>`。
+- **REPLTool buildTool 签名** — 适配当前 API：async description、正确 call 签名、`{ data }` 返回格式、checkPermissions。
+- **WebBrowserTool Engine API** — 修复 `openTab`/`screenshotTab`/`clickElement`/`typeInElement`/`getAccessibilityTree` 传参为 string ID（非对象）。用 `page.evaluate` 替代不存在的 `scrollPage`。
+
+## [2.1.6] - 2026-05-24
+
+### 新功能
+
+- **Hashline Edit 集成** — 当 `HASHLINE_EDIT` feature flag 开启时，`addLineNumbers()` 输出 hash 锚点格式（`42sr|code`）而非纯 tab 分隔格式。`stripLineNumberPrefix()` 同步更新以解析两种格式。
+- **系统提示词工具路由引导** — 新增 WebBrowser（页面导航、截图、交互）、MiniMax（图像/视频/音乐/语音/搜索生成）、REPL（Python 执行、数据分析）、HashlineEdit（大文件编辑优先）的引导段落。
+- **FileEditTool 提示词更新** — HASHLINE_EDIT 开启时，告知模型行号前缀格式为 `42sr|`，引导模型在大文件编辑时优先使用 HashlineEdit。
+
+### 修复
+
+- **HashlineEditTool 类型错误** — 适配当前 `buildTool` API 要求：补充 `description()`、`maxResultSizeChars`、`renderToolUseMessage`、`mapToolResultToToolResultBlockParam` 及正确的 `call` 签名。
+- **prompts.ts 缺失 import** — 补充 `getAntModelOverrideConfig` 从 `../utils/model/antModels.js` 的导入。
+
+## [2.1.5] - 2026-05-23
+
+### 新功能
+
+- **多提供商路由** — 28 家 AI 提供商（Anthropic、OpenAI、Google Gemini、Ollama、DeepSeek、Groq、Together、Fireworks、Mistral、OpenRouter、xAI、SambaNova、Cerebras、Perplexity、Cohere、Azure OpenAI、AWS Bedrock、Google Vertex、Novita、Hyperbolic、Lepton、Nebius、DeepInfra、Anyscale、Replicate、Moonshot/Kimi、Zhipu/GLM、MiniMax、Qwen、Yi、Baichuan），9 种 API 协议（anthropic-messages、openai-completions、openai-responses、google-generative-ai、ollama-chat、bedrock-converse、azure-openai、google-vertex、cursor-agent）。SQLite 模型缓存（WAL 模式，2h TTL）。协议模块懒加载，零启动开销。
+- **Hashline 编辑系统** — 基于 xxHash32 双字母锚点的精确编辑。每行生成 2 字符锚点（恰好 1 个 BPE token），模型可无歧义引用精确行位置。彻底消灭 str_replace 失败 — 弱模型编辑成功率提升 10 倍（Grok Code Fast 1: 6.7% → 68.3%），输出 token 减少 61%。支持 `«`（行前插入）、`»`（行后插入）、`≔`（范围替换/删除）、`§PATH`（多文件补丁）。内置 3-way merge 恢复机制。
+- **持久 Shell** — 复用 shell 子进程，避免每次命令 spawn（节省 ~5-15ms/次）。会话池（最多 4 个），按 session ID 隔离。空闲 60s 自动回收。SIGINT 中断当前命令但不杀 shell。
+- **输出最小化器** — npm/pip/cargo/git/docker/bun 工具规则引擎。超过 15 行的冗长输出自动压缩为摘要。仅在命令成功（exit 0）时生效。可通过 `OUTPUT_MINIMIZER` flag 关闭。
+- **Grep 缓存** — LRU 缓存（50 条目，5s TTL）。同路径 + 同 pattern 复用结果。文件编辑后自动失效。
+- **真实浏览器控制** — puppeteer-core + CDP 集成，支持 headless/spawned/connected 三种启动模式。可访问性树提取实现结构化页面理解。反检测 stealth 脚本。跨平台 Chrome 自动发现。支持通过 CDP 附加 Electron 应用。
+- **持久 Python 环境** — 有状态 Python kernel，NDJSON 协议通过 stdin/stdout 通信。自动检测 venv/conda。富显示支持（pandas DataFrame、PIL 图片、matplotlib 图表转 base64）。跨回合会话持久。SIGINT→SIGTERM→SIGKILL 优雅关闭。
+- **配置联邦发现** — 实时读取（非迁移）其他工具的配置目录：`.cursor/`（MCP + 规则）、`.windsurf/`（MCP + 规则）、`.gemini/`（MCP + 上下文）、`.codex/`（AGENTS.md + MCP）、`.clinerules`、`.github/copilot-instructions.md`、`.vscode/mcp.json`。基于优先级去重。可通过 settings 禁用特定 provider。
+- **Admin WebUI 扩展** — 设置面板：9 种 API 路由模式，Azure/Bedrock/Vertex/Google/OpenRouter 凭证字段。配置面板：21 个一键提供商预设（原 7 个）。每个预设预填 baseUrl、apiFormat、模型名和 key 前缀。
+
+### Feature Flags
+
+所有新功能通过编译时 feature flag 控制（默认开启）：
+
+```
+HASHLINE_EDIT = true
+MULTI_PROVIDER = true
+PERSISTENT_SHELL = true
+OUTPUT_MINIMIZER = true
+REAL_BROWSER = true
+PYTHON_KERNEL = true
+CONFIG_DISCOVERY = true
+```
+
+## [2.1.3] - 2026-05-23
+
+### 修复
+
+- **`/loop` 定时任务不触发** — 移除 `isKairosCronEnabled()` 和 `isDurableCronEnabled()` 对 GrowthBook 远程 feature flag (`tengu_kairos_cron`) 的依赖。定时调度现在仅依赖编译时 `AGENT_TRIGGERS` 标志 + 本地 `CLAUDE_CODE_DISABLE_CRON` 环境变量。LegnaCode 本地控制自己的功能开关。
+- **OpenAI 流式桥接空响应静默吞错误** — 当 OpenAI 兼容 API（DeepSeek 等）流在没有 `finish_reason` 的情况下结束且无任何内容输出时，抛出错误而非静默视为成功的 `end_turn`。如果流中有未完成的 tool_call blocks，推断 `tool_use` 作为 stop_reason 以确保 agentic 循环继续执行。
+- **Cron prompt 路径引用** — 修复 CronDelete/CronList 工具 prompt 中的 `.claude/scheduled_tasks.json` → `.legna/scheduled_tasks.json`。
+
 ## [2.1.2] - 2026-05-07
 
 ### 修复

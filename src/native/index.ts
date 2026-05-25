@@ -98,4 +98,66 @@ export const applyPatchAddon = tryLoadAddon<ApplyPatchAddon>('apply-patch')
 export const hasNativeSandbox = sandboxAddon !== null
 export const hasNativeFileSearch = fileSearchAddon !== null
 export const hasNativeApplyPatch = applyPatchAddon !== null
-export const hasAnyNativeAddon = hasNativeSandbox || hasNativeFileSearch || hasNativeApplyPatch
+
+// ── Native Grep (pure TS — uses ripgrep subprocess + LRU cache) ──────────
+
+export interface NativeGrepOptions {
+  pattern: string
+  root_dir: string
+  is_regex?: boolean
+  case_insensitive?: boolean
+  max_results?: number
+  context_before?: number
+  context_after?: number
+  glob_filter?: string
+  file_type?: string
+  respect_gitignore?: boolean
+}
+
+export interface NativeGrepMatch {
+  path: string
+  line_number: number
+  line_content: string
+  context_before?: string[]
+  context_after?: string[]
+}
+
+export interface NativeGrepResult {
+  matches: NativeGrepMatch[]
+  files_searched: number
+  truncated: boolean
+}
+
+// Pure TS implementation — no native addon needed
+export const grepAddon = null
+export const hasNativeGrep = true // Always available via TS ripgrep wrapper
+
+// ── Native Shell (pure TS — persistent child process) ──────────
+
+export interface NativeShellOptions {
+  command: string
+  cwd?: string
+  env?: Record<string, string>
+  timeout_ms?: number
+}
+
+export interface NativeShellResult {
+  exit_code: number
+  stdout: string
+  stderr: string
+  duration_ms: number
+  timed_out: boolean
+}
+
+// Pure TS implementation — no native addon needed
+export const shellAddon = null
+export const hasNativeShell = true // Always available via TS persistent shell
+
+// ── Availability checks ────────────────────────────────────────
+
+export const hasAnyNativeAddon = hasNativeSandbox || hasNativeFileSearch || hasNativeApplyPatch || hasNativeGrep || hasNativeShell
+
+// ── Re-export TS binding implementations ──────────────────────
+// These provide the actual grep/shell functionality (pure TS, no native addon).
+export { nativeGrepSearch, isNativeGrepAvailable } from './grepBinding.js'
+export { nativeShellExec, createShellSession, executeInSession, destroyShellSession, isNativeShellAvailable } from './shellBinding.js'

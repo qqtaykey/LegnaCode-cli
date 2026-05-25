@@ -4,6 +4,76 @@
 
 All notable changes to LegnaCode CLI will be documented in this file.
 
+## [2.1.8] - 2026-05-25
+
+### Fixes
+
+- **Computer Use Screenshot Permission Loop** — macOS Screen Recording permission check via Swift subprocess (`swift -e` + `CGPreflightScreenCaptureAccess()`) always returned `false` for child processes because TCC binds to the parent app bundle, not spawned subprocesses. Replaced with Python bridge `check_permissions` which uses a window-title fallback probe. `null` (unknown/unreliable) is now treated as non-blocking — the actual capture attempt is the final source of truth.
+- **Agent Stalling After File Reads** — Added explicit "read-then-act" directive to system prompt. The model would read files then stop (end_turn) waiting for user input instead of proceeding to edit. Now instructed to proceed immediately after reading — no summary, no confirmation pause.
+
+## [2.1.7] - 2026-05-24
+
+### Features
+
+- **Config Federation Discovery Wired** — The 7-provider discovery module (`cursor`, `windsurf`, `vscode`, `github`, `gemini`, `codex`, `cline`) is now integrated into startup. Discovered MCP servers merge into `mcp/config.ts` at lowest priority; discovered rules merge into `claudemd.ts` memory files. Gated by `CONFIG_DISCOVERY` flag. Non-blocking, try/catch wrapped.
+- **Feature Flags Declared** — Added `CONFIG_DISCOVERY`, `HASHLINE_EDIT`, `MULTI_PROVIDER`, `OML_BUILTIN`, `OUTPUT_MINIMIZER`, `PERSISTENT_SHELL`, `REAL_BROWSER` to `bun-bundle.d.ts` type declarations. All flags now recognized at compile time.
+- **WebUI Preset Switching** — Changing `apiFormat` now clears provider-specific fields that don't belong to the new format (Azure keys when switching away from Azure, Bedrock keys when switching away from Bedrock, etc.). Also resets `kiroGateway` when switching to non-Anthropic formats.
+
+### Fixes
+
+- **MiniMax 6 Tools Type Errors** — All 6 MiniMax tools (Image, Music, Speech, Video, Vision, WebSearch) fixed to match `buildTool` API: getter `inputSchema`, 3-param `renderToolResultMessage`, `async description()`, correct `satisfies ToolDef<InputSchema, Output>`.
+- **REPLTool buildTool Signature** — Adapted to current API: async description, proper call signature, `{ data }` return format, checkPermissions.
+- **WebBrowserTool Engine API** — Fixed `openTab`/`screenshotTab`/`clickElement`/`typeInElement`/`getAccessibilityTree` to pass string IDs (not object handles). Replaced non-existent `scrollPage` with direct `page.evaluate` scroll.
+
+## [2.1.6] - 2026-05-24
+
+### Features
+
+- **Hashline Edit Integration** — When `HASHLINE_EDIT` feature flag is enabled, `addLineNumbers()` outputs hash-anchored format (`42sr|code`) instead of plain tab-separated format. `stripLineNumberPrefix()` updated to parse both formats.
+- **System Prompt Tool Routing** — Added guidance sections for WebBrowser (page navigation, screenshots, interaction), MiniMax (image/video/music/speech/search generation), REPL (Python execution, data analysis), and HashlineEdit (large file editing preference).
+- **FileEditTool Prompt Update** — When HASHLINE_EDIT is enabled, informs the model about the `42sr|` line prefix format and guides it to prefer HashlineEdit for large edits.
+
+### Fixes
+
+- **HashlineEditTool Type Errors** — Adapted to current `buildTool` API requirements: added `description()`, `maxResultSizeChars`, `renderToolUseMessage`, `mapToolResultToToolResultBlockParam`, and correct `call` signature.
+- **Missing Import in prompts.ts** — Added missing `getAntModelOverrideConfig` import from `../utils/model/antModels.js`.
+
+## [2.1.5] - 2026-05-23
+
+### Features
+
+- **Multi-Provider Routing** — 28 AI providers (Anthropic, OpenAI, Google Gemini, Ollama, DeepSeek, Groq, Together, Fireworks, Mistral, OpenRouter, xAI, SambaNova, Cerebras, Perplexity, Cohere, Azure OpenAI, AWS Bedrock, Google Vertex, Novita, Hyperbolic, Lepton, Nebius, DeepInfra, Anyscale, Replicate, Moonshot/Kimi, Zhipu/GLM, MiniMax, Qwen, Yi, Baichuan) with 9 API protocols (anthropic-messages, openai-completions, openai-responses, google-generative-ai, ollama-chat, bedrock-converse, azure-openai, google-vertex, cursor-agent). SQLite model cache (WAL mode, 2h TTL). Lazy-loaded protocol modules for zero startup overhead.
+- **Hashline Edit System** — Hash-anchored precision editing using xxHash32 bigram anchors. Each line gets a 2-char anchor (exactly 1 BPE token), enabling models to reference exact line positions without ambiguity. Eliminates str_replace failures — edit success rate improves 10x on weaker models (Grok Code Fast 1: 6.7% → 68.3%). Output tokens reduced 61%. Supports `«` (insert before), `»` (insert after), `≔` (replace/delete range), `§PATH` (multi-file patches). Includes 3-way merge recovery when files change between read and edit.
+- **Persistent Shell** — Reuses shell child processes instead of spawning per-command (~5-15ms saved/cmd). Session pool (max 4), isolated by session ID. Auto-reclaim after 60s idle. SIGINT interrupts current command without killing shell.
+- **Output Minimizer** — Rule engine for npm/pip/cargo/git/docker/bun tools. Compresses verbose output (>15 lines) into concise summaries. Only applies on success (exit 0). Disable via `OUTPUT_MINIMIZER` flag.
+- **Grep Cache** — LRU cache (50 entries, 5s TTL). Reuses results for same path + same pattern. Auto-invalidates after file edits.
+- **Real Browser Control** — puppeteer-core + CDP integration with headless/spawned/connected launch modes. Accessibility tree extraction for structured page understanding. Stealth scripts for anti-detection. Chrome auto-discovery across platforms. Supports Electron app attachment via CDP.
+- **Persistent Python Environment** — Stateful Python kernel with NDJSON protocol over stdin/stdout. venv/conda auto-detection. Rich display support (pandas DataFrames, PIL images, matplotlib plots as base64). Session persistence across turns. SIGINT→SIGTERM→SIGKILL graceful shutdown.
+- **Config Federation Discovery** — Live read (not migration) from other tools' config directories: `.cursor/` (MCP + rules), `.windsurf/` (MCP + rules), `.gemini/` (MCP + context), `.codex/` (AGENTS.md + MCP), `.clinerules`, `.github/copilot-instructions.md`, `.vscode/mcp.json`. Priority-based deduplication. Disable specific providers via settings.
+- **Admin WebUI Expanded** — Settings panel: 9 API routing modes, Azure/Bedrock/Vertex/Google/OpenRouter credential fields. Profiles panel: 21 one-click provider presets (was 7). Each preset pre-fills baseUrl, apiFormat, model names, and key prefix.
+
+### Feature Flags
+
+All new features are gated behind build-time feature flags (default on):
+
+```
+HASHLINE_EDIT = true
+MULTI_PROVIDER = true
+PERSISTENT_SHELL = true
+OUTPUT_MINIMIZER = true
+REAL_BROWSER = true
+PYTHON_KERNEL = true
+CONFIG_DISCOVERY = true
+```
+
+## [2.1.3] - 2026-05-23
+
+### Fixes
+
+- **`/loop` cron not firing** — Removed GrowthBook `tengu_kairos_cron` remote feature flag dependency from `isKairosCronEnabled()` and `isDurableCronEnabled()`. Cron scheduling now only depends on the build-time `AGENT_TRIGGERS` flag + local `CLAUDE_CODE_DISABLE_CRON` env var. LegnaCode controls its own features locally.
+- **OpenAI stream bridge silent empty response** — When an OpenAI-compatible API (DeepSeek, etc.) stream ends without `finish_reason` and has produced no content, throw an error instead of silently treating it as a successful `end_turn`. If the stream has open tool_call blocks, infer `tool_use` stop_reason so the agentic loop continues.
+- **Cron prompt path references** — Fixed `.claude/scheduled_tasks.json` → `.legna/scheduled_tasks.json` in CronDelete/CronList tool prompts.
+
 ## [2.1.2] - 2026-05-07
 
 ### Fixes

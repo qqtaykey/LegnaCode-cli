@@ -5,13 +5,14 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, ENDPOINTS } from './cli
 import { MINIMAX_IMAGE_TOOL_NAME, MINIMAX_IMAGE_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     prompt: z.string().describe('Image generation prompt'),
     n: z.number().optional().describe('Number of images (1-9, default 1)'),
     aspect_ratio: z.string().optional().describe('Aspect ratio, e.g. "1:1", "16:9", "9:16"'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type Output = {
   result: string
@@ -23,8 +24,10 @@ type Output = {
 export const MiniMaxImageGenerateTool = buildTool({
   name: MINIMAX_IMAGE_TOOL_NAME,
   searchHint: 'generate create image picture photo illustration',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_IMAGE_DESCRIPTION },
   userFacingName: () => 'MiniMax Image',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -43,7 +46,7 @@ export const MiniMaxImageGenerateTool = buildTool({
   renderToolUseMessage(input) {
     return renderMiniMaxToolUse('Generating image', input.prompt)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -80,4 +83,4 @@ export const MiniMaxImageGenerateTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)

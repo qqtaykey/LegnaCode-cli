@@ -5,13 +5,14 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, ENDPOINTS } from './cli
 import { MINIMAX_SPEECH_TOOL_NAME, MINIMAX_SPEECH_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     text: z.string().describe('Text to synthesize into speech'),
     voice: z.string().optional().describe('Voice ID (default: English_expressive_narrator)'),
     speed: z.number().optional().describe('Speech speed 0.5-2.0 (default 1.0)'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type Output = {
   result: string
@@ -22,8 +23,10 @@ type Output = {
 export const MiniMaxSpeechSynthesizeTool = buildTool({
   name: MINIMAX_SPEECH_TOOL_NAME,
   searchHint: 'text to speech TTS voice audio synthesize',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_SPEECH_DESCRIPTION },
   userFacingName: () => 'MiniMax Speech',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -43,7 +46,7 @@ export const MiniMaxSpeechSynthesizeTool = buildTool({
     const preview = input.text ? input.text.slice(0, 60) + (input.text.length > 60 ? '...' : '') : undefined
     return renderMiniMaxToolUse('Synthesizing speech', preview)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -83,4 +86,4 @@ export const MiniMaxSpeechSynthesizeTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)

@@ -1,3 +1,4 @@
+import { feature } from 'bun:bundle'
 import { isCompactLinePrefixEnabled } from '../../utils/file.js'
 import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
 
@@ -10,9 +11,14 @@ export function getEditToolDescription(): string {
 }
 
 function getDefaultEditDescription(): string {
-  const prefixFormat = isCompactLinePrefixEnabled()
-    ? 'line number + tab'
-    : 'spaces + line number + arrow'
+  const hashlineHint = feature('HASHLINE_EDIT')
+    ? `\n- When the Read output shows hash-anchored lines (e.g., \`42sr|function hello() {\`), you can use the HashlineEdit tool for faster, more precise edits by referencing line anchors directly. Use this Edit tool when you need simple string replacements or when hash anchors are not available.`
+    : ''
+  const prefixFormat = feature('HASHLINE_EDIT')
+    ? 'line number + 2-letter hash + pipe (e.g., `42sr|`)'
+    : isCompactLinePrefixEnabled()
+      ? 'line number + tab'
+      : 'spaces + line number + arrow'
   const minimalUniquenessHint =
     process.env.USER_TYPE === 'ant'
       ? `\n- Use the smallest old_string that's clearly unique — usually 2-4 adjacent lines is sufficient. Avoid including 10+ lines of context when less uniquely identifies the target.`
@@ -24,5 +30,5 @@ Usage:${getPreReadInstruction()}
 - ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
 - Only use emojis if the user explicitly requests it. Avoid adding emojis to files unless asked.
 - The edit will FAIL if \`old_string\` is not unique in the file. Either provide a larger string with more surrounding context to make it unique or use \`replace_all\` to change every instance of \`old_string\`.${minimalUniquenessHint}
-- Use \`replace_all\` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.`
+- Use \`replace_all\` for replacing and renaming strings across the file. This parameter is useful if you want to rename a variable for instance.${hashlineHint}`
 }

@@ -4,37 +4,26 @@ import type {
 } from './mcp/types.js'
 import { execFile } from 'child_process'
 import { format } from 'util'
-import { promisify } from 'util'
 import { logForDebugging } from '../debug.js'
 import { COMPUTER_USE_MCP_SERVER_NAME } from './common.js'
 import { createCliExecutor } from './executor.js'
 import { getChicagoEnabled, getChicagoSubGates } from './gates.js'
 import { callPythonBridge } from './pythonBridge.js'
 
-const execFileAsync = promisify(execFile)
+// ── macOS permission check via Python bridge ────────────────────────────────
+// The Python helper's `check_permissions` uses CGPreflightScreenCaptureAccess()
+// with a window-title fallback probe. For child processes the preflight API is
+// unreliable (returns false even when the parent app bundle is authorized), so
+// we treat `null` (unknown) as non-blocking and let the actual capture attempt
+// be the final source of truth.
 
-// ── macOS permission check via inline Swift (no Python needed) ──────────────
-
-const SWIFT_PERMISSION_CHECK = `
-import Cocoa
-import CoreGraphics
-
-let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-let ax = AXIsProcessTrustedWithOptions(opts)
-CGRequestScreenCaptureAccess()
-let sr = CGPreflightScreenCaptureAccess()
-print("{\\"accessibility\\":\\(ax),\\"screenRecording\\":\\(sr)}")
-`
-
-async function checkMacPermissions(): Promise<{ accessibility: boolean; screenRecording: boolean }> {
+async function checkMacPermissionsViaPython(): Promise<{ accessibility: boolean; screenRecording: boolean | null }> {
   try {
-    const { stdout } = await execFileAsync('swift', ['-e', SWIFT_PERMISSION_CHECK], {
-      timeout: 10_000,
-    })
-    return JSON.parse(stdout.trim())
+    return await callPythonBridge<{ accessibility: boolean; screenRecording: boolean | null }>('check_permissions')
   } catch (err) {
-    logForDebugging(`[computer-use] Swift permission check failed: ${err}`)
-    return { accessibility: false, screenRecording: false }
+    logForDebugging(`[computer-use] Python permission check failed: ${err}`)
+    // Fail-open: let the actual capture be the source of truth
+    return { accessibility: true, screenRecording: null }
   }
 }
 
@@ -78,30 +67,24 @@ export function getComputerUseHostAdapter(): ComputerUseHostAdapter {
       }
 
       if (process.platform === 'darwin') {
-        const perms = await checkMacPermissions()
-        const { accessibility, screenRecording } = perms
+        const raw = await checkMacPermissionsViaPython()
+        // null = child-process probe unreliable, treat as non-blocking
+        const screenRecording = raw.screenRecording !== false
+        const granted = raw.accessibility && screenRecording
 
-        if (accessibility && screenRecording) {
+        if (granted) {
           return { granted: true }
         }
 
-        // Auto-open the relevant System Settings pane
-        const missing: string[] = []
-        if (!accessibility) missing.push('Accessibility (辅助功能)')
-        if (!screenRecording) missing.push('Screen Recording (屏幕录制)')
-        logForDebugging(
-          `[computer-use] Missing macOS permissions: ${missing.join(', ')}. Opening System Settings...`,
-        )
-        try {
-          if (!accessibility) {
-            execFile('open', ['x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'])
-          }
-          if (!screenRecording) {
-            execFile('open', ['x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'])
-          }
-        } catch {}
+        // Only open Settings for definitively-denied permissions
+        if (!raw.accessibility) {
+          execFile('open', ['x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'])
+        }
+        if (raw.screenRecording === false) {
+          execFile('open', ['x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'])
+        }
 
-        return { granted: false, accessibility, screenRecording }
+        return { granted: false, accessibility: raw.accessibility, screenRecording }
       }
 
       // Unsupported platform

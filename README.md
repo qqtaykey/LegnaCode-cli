@@ -4,7 +4,7 @@
 
 **An AI-powered terminal programming assistant, supercharged.**
 
-[![version](https://img.shields.io/badge/version-2.1.2-blue)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-2.1.8-blue)](./CHANGELOG.md)
 [![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
@@ -18,15 +18,18 @@
 
 ---
 
-LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/claude-code) with deep enhancements — fully compatible with the original, while adding multimodal tools, smarter memory, better UX, and more.
+LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/claude-code) with deep enhancements — fully compatible with the original, while adding multi-provider routing, precision editing, real browser control, and more.
 
 ### Highlights
 
+🔀 **28 AI providers, 9 protocols** — Anthropic, OpenAI, Gemini, Bedrock, Azure, Vertex, Ollama, DeepSeek, Groq, xAI, Mistral, OpenRouter, and 16 more — one config switch\
+✏️ **Hashline precision editing** — Hash-anchored line references eliminate str_replace failures; 10x success rate on weaker models\
+🌐 **Real browser control** — Puppeteer + CDP with accessibility tree extraction, stealth scripts, Electron attachment\
+🐍 **Persistent Python kernel** — Stateful REPL across turns with rich display (DataFrames, plots, images)\
 🧠 **88% less memory tokens** — 4-layer memory stack with vector search replaces flat MEMORY.md injection\
 🎨 **6 multimodal tools** — Image, video, speech, music, vision, web search (MiniMax models)\
 ⚡ **Instant feedback** — Token counter from second 1, status in spinner line, no silent operations\
-🔌 **Pluggable memory** — DrawerStore (SQLite + TF-IDF), temporal knowledge graph, WAL audit\
-🤖 **Smarter agents** — RPC subprocess execution, autonomous skill detection, smart model routing
+🔌 **Config federation** — Auto-discovers rules and MCP from Cursor, Windsurf, Gemini, Codex, Copilot, Cline
 
 ---
 
@@ -34,35 +37,55 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
-| **2.1.2** | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
-| **2.1.1** | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
-| **2.1.0** | Platform-aware publish (Mac→darwin+linux, Win→win32); DeepSeek reasoning_content multi-turn 400 fix; ShellProgressMessage crash fix |
-| **2.0.5** | LegnaCode Office pixel visualization (conversation sidebar, status bubble, WebSocket, join-key auth, layout persistence, notification sounds, demo mode, i18n); DeepSeek reasoning_content passback fix |
-| **2.0.4** | OpenAI Responses API bridge (Codex providers); admin config hot-reload + UI auto-refresh; getGlobalSettings dead code fix |
-| **2.0.3** | Kiro Gateway optimization; admin profile inline editing; model allowlist removed; count_tokens disabled; sandbox removed |
-| **1.9.9** | Bash exit code 65 彻底修复；Admin 预设配置模板；ANTHROPIC_MODEL 字段 |
-| **1.9.5** | Admin preset profile templates (7 providers); ANTHROPIC_MODEL field; migration auto-fill |
-| **1.9.4** | macOS Seatbelt sandbox rewrite (allow-by-default); Shell.ts sandbox return path fix |
-| **1.9.3** | OpenAI-compatible API routing; deep adapter alignment for all 7 CN providers; admin profile clone; Bash sandbox fix |
-| **1.9.2** | Computer Use Python bridge (macOS + Windows); auto Python 3.12+ venv setup; feature gate removal for Computer Use |
-| **1.9.0** | Portable sessions (relative cwd); WebUI overhaul (project browser, memory editor, force-directed graph); full project migration (sessions + subagents + memory + skills + agents + rules + MCP config); profile switching via pointer file |
-| **1.8.5** | Token optimization: compress tool prompts (BashTool/AgentTool/TodoWrite/EnterPlanMode); fix cache_control for Kimi/MiniMax/MiMo adapters |
+| **2.1.8** | Fix Computer Use screenshot permission loop (Swift→Python bridge); fix agent stalling after file reads (read-then-act directive) |
+| **2.1.7** | Wire all 6 custom features; config federation discovery startup integration; fix all MiniMax/REPL/WebBrowser tool types; WebUI preset switching clears stale fields; declare all feature flags |
+| **2.1.6** | Hashline Edit integration (hash-anchored Read output); fix HashlineEditTool type errors; fix missing import in prompts.ts; system prompt guidance for tool routing |
+| **2.1.5** | Multi-provider routing (28 providers, 9 protocols); Hashline edit system; persistent shell + output minimizer; real browser control; persistent Python kernel; config federation discovery; Admin WebUI expanded (21 presets) |
 
 <details>
-<summary>1.8.x patches</summary>
+<summary>2.1.x patches</summary>
 
 | Version | Summary |
 |---------|---------|
-| 1.8.4 | Fix `isVirtual in m` crash — null guards for session transcript processing |
-| 1.8.3 | GitHub Actions CI release workflow; OML agent type fix; cross-platform Rust native addon builds |
-| 1.8.2 | Null-guard fixes for message pipeline crashes; Rust native addons (sandbox/file-search/apply-patch) for darwin-arm64 |
+| 2.1.3 | Remove GrowthBook dependency from /loop cron gate; fix OpenAI stream bridge silently swallowing empty responses |
+| 2.1.2 | Fix ctrl+o crash when sandbox is disabled (SandboxViolationStore.subscribe guard) |
+| 2.1.1 | DeepSeek deep optimization: auto reasoning effort, precise pricing, model alias expansion, tool name encoding |
+| 2.1.0 | Platform-aware publish (Mac→darwin+linux, Win→win32); DeepSeek reasoning_content multi-turn 400 fix; ShellProgressMessage crash fix |
 
 </details>
 
-| **1.8.0** | Codex full compat: plugin adapter + marketplace, skills discovery, config interop; TS/Python SDK; TTS + WebRTC voice |
+<details>
+<summary>2.0.x</summary>
+
+| Version | Summary |
+|---------|---------|
+| 2.0.5 | LegnaCode Office pixel visualization (conversation sidebar, status bubble, WebSocket, join-key auth, layout persistence, notification sounds, demo mode, i18n); DeepSeek reasoning_content passback fix |
+| 2.0.4 | OpenAI Responses API bridge (Codex providers); admin config hot-reload + UI auto-refresh; getGlobalSettings dead code fix |
+| 2.0.3 | Kiro Gateway optimization; admin profile inline editing; model allowlist removed; count_tokens disabled; sandbox removed |
+
+</details>
 
 <details>
-<summary>Older versions</summary>
+<summary>1.8.x – 1.9.x</summary>
+
+| Version | Summary |
+|---------|---------|
+| 1.9.9 | Bash exit code 65 彻底修复；Admin 预设配置模板；ANTHROPIC_MODEL 字段 |
+| 1.9.5 | Admin preset profile templates (7 providers); ANTHROPIC_MODEL field; migration auto-fill |
+| 1.9.4 | macOS Seatbelt sandbox rewrite (allow-by-default); Shell.ts sandbox return path fix |
+| 1.9.3 | OpenAI-compatible API routing; deep adapter alignment for all 7 CN providers; admin profile clone; Bash sandbox fix |
+| 1.9.2 | Computer Use Python bridge (macOS + Windows); auto Python 3.12+ venv setup; feature gate removal for Computer Use |
+| 1.9.0 | Portable sessions (relative cwd); WebUI overhaul (project browser, memory editor, force-directed graph); full project migration; profile switching via pointer file |
+| 1.8.5 | Token optimization: compress tool prompts (BashTool/AgentTool/TodoWrite/EnterPlanMode); fix cache_control for Kimi/MiniMax/MiMo adapters |
+| 1.8.4 | Fix `isVirtual in m` crash — null guards for session transcript processing |
+| 1.8.3 | GitHub Actions CI release workflow; OML agent type fix; cross-platform Rust native addon builds |
+| 1.8.2 | Null-guard fixes for message pipeline crashes; Rust native addons (sandbox/file-search/apply-patch) for darwin-arm64 |
+| 1.8.0 | Codex full compat: plugin adapter + marketplace, skills discovery, config interop; TS/Python SDK; TTS + WebRTC voice |
+
+</details>
+
+<details>
+<summary>1.0.x – 1.6.x</summary>
 
 | Version | Summary |
 |---------|---------|
@@ -114,19 +137,53 @@ Built on [Claude Code CLI](https://github.com/anthropics/claude-code) by Anthrop
 <table>
 <tr><td>
 
-**🎨 Multimodal** (MiniMax)
-- Image / Video / Speech generation
-- Music generation / Vision / Web search
-- Auto-orchestrated pipelines
-- `/auth-minimax` configuration
+**🔀 Multi-Provider Routing**
+- 28 providers, 9 API protocols
+- Anthropic / OpenAI / Gemini / Bedrock / Azure / Vertex / Ollama
+- One-click profile switching (Admin WebUI)
+- Auto protocol inference from URL
 
 </td><td>
+
+**✏️ Hashline Edit**
+- Hash-anchored precision editing
+- 10x success rate on weaker models
+- 61% output token reduction
+- 3-way merge auto-recovery
+
+</td></tr>
+<tr><td>
+
+**🌐 Real Browser**
+- Puppeteer + CDP headless control
+- Accessibility tree extraction
+- Stealth anti-detection scripts
+- Electron app attachment
+
+</td><td>
+
+**🐍 Persistent Python**
+- Stateful kernel across turns
+- Rich display (DataFrames, plots, images)
+- venv/conda auto-detection
+- NDJSON protocol over stdin/stdout
+
+</td></tr>
+<tr><td>
 
 **🧠 Memory**
 - 4-layer stack (~800 tokens/turn)
 - TF-IDF vector search (<5ms)
 - Temporal knowledge graph
 - PreCompact auto-save
+
+</td><td>
+
+**🎨 Multimodal** (MiniMax)
+- Image / Video / Speech generation
+- Music generation / Vision / Web search
+- Auto-orchestrated pipelines
+- `/auth-minimax` configuration
 
 </td></tr>
 <tr><td>
@@ -139,28 +196,11 @@ Built on [Claude Code CLI](https://github.com/anthropics/claude-code) by Anthrop
 
 </td><td>
 
-**🛡️ Core**
-- 45+ built-in tools
-- Multi-cloud backends
-- MCP protocol support
-- Multi-agent collaboration
-
-</td></tr>
-<tr><td>
-
-**🖥️ UX**
-- Verbose on by default
-- Token counter from second 1
-- Status in spinner line
-- Interrupt reason visible
-
-</td><td>
-
 **🔧 DevOps**
-- WebUI admin panel
-- `legna migrate` tool
-- Pure TS syntax highlighting
-- Cross-platform binaries
+- WebUI admin panel (21 provider presets)
+- Config federation (Cursor/Windsurf/Gemini/Codex/Copilot)
+- Persistent shell sessions
+- Output minimizer (git/npm/cargo)
 
 </td></tr>
 </table>

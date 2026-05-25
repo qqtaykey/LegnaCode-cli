@@ -5,12 +5,13 @@ import { isMiniMaxAvailable, minimaxRequest, getBaseUrl, ENDPOINTS } from './cli
 import { MINIMAX_VISION_TOOL_NAME, MINIMAX_VISION_DESCRIPTION } from './prompt.js'
 import { renderMiniMaxToolUse, renderMiniMaxToolResult, renderMiniMaxToolError } from './UI.js'
 
-const InputSchema = lazySchema(() =>
+const inputSchema = lazySchema(() =>
   z.object({
     image_url: z.string().describe('URL of the image to analyze'),
     prompt: z.string().optional().describe('Question or instruction about the image (default: describe in detail)'),
   }),
 )
+type InputSchema = ReturnType<typeof inputSchema>
 
 type Output = {
   result: string
@@ -20,8 +21,10 @@ type Output = {
 export const MiniMaxVisionDescribeTool = buildTool({
   name: MINIMAX_VISION_TOOL_NAME,
   searchHint: 'analyze describe image vision VLM picture',
+  maxResultSizeChars: 50_000,
+  async description() { return MINIMAX_VISION_DESCRIPTION },
   userFacingName: () => 'MiniMax Vision',
-  inputSchema: InputSchema,
+  get inputSchema(): InputSchema { return inputSchema() },
 
   isEnabled() {
     return isMiniMaxAvailable()
@@ -40,7 +43,7 @@ export const MiniMaxVisionDescribeTool = buildTool({
   renderToolUseMessage(input) {
     return renderMiniMaxToolUse('Analyzing image', input.image_url)
   },
-  renderToolResultMessage(output: Output, opts) {
+  renderToolResultMessage(output: Output, _progress: any, opts: any) {
     return renderMiniMaxToolResult(output, opts)
   },
   renderToolUseErrorMessage: renderMiniMaxToolError,
@@ -70,4 +73,4 @@ export const MiniMaxVisionDescribeTool = buildTool({
       content: output.result,
     }
   },
-} satisfies ToolDef<typeof InputSchema, Output>)
+} satisfies ToolDef<InputSchema, Output>)
