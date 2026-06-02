@@ -4,7 +4,7 @@
 
 **An AI-powered terminal programming assistant, supercharged.**
 
-[![version](https://img.shields.io/badge/version-2.1.8-blue)](./CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-2.1.9-blue)](./CHANGELOG.md)
 [![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-brightgreen)](#platform-support)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/based%20on-Claude%20Code-blueviolet)](https://github.com/anthropics/claude-code)
@@ -37,6 +37,7 @@ LegnaCode is built on top of [Claude Code CLI](https://github.com/anthropics/cla
 
 | Version | Summary |
 |---------|---------|
+| **2.1.9** | Fix Computer Use "Finder not installed" — add CoreServices to search paths + merge running apps into installed list |
 | **2.1.8** | Fix Computer Use screenshot permission loop (Swift→Python bridge); fix agent stalling after file reads (read-then-act directive) |
 | **2.1.7** | Wire all 6 custom features; config federation discovery startup integration; fix all MiniMax/REPL/WebBrowser tool types; WebUI preset switching clears stale fields; declare all feature flags |
 | **2.1.6** | Hashline Edit integration (hash-anchored Read output); fix HashlineEditTool type errors; fix missing import in prompts.ts; system prompt guidance for tool routing |
